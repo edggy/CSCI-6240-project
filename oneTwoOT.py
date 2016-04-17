@@ -67,12 +67,11 @@ class OneTwoOT:
 		# n = length of message in bytes or size of prime in bytes, whichever is larger
 		import os
 		import otp
-		print 'Start Send'
 		x = os.urandom(n)
-		print 'Got x'
+		
 		X = field.pow(g, x)
-		print 'Alice:\tx = %s, X = %s' % (x, X)
-		print 'Alice:\tx = %s, X = %s' % (field.arrayToInt(x), field.arrayToInt(X))
+		#print 'Alice:\tx = %s, X = %s' % (x, X)
+		#print 'Alice:\tx = %s, X = %s' % (field.arrayToInt(x), field.arrayToInt(X))
 		self._socket.send(X)
 
 		Y = self._socket.recv(n)
@@ -81,7 +80,7 @@ class OneTwoOT:
 		pad = otp.OTP()
 		C0, C1 = pad.encrypt(message0, n, K0)[0], pad.encrypt(message1, n, K1)[0]
 
-		print 'Alice:\tY = %s, K0 = %s, K1 = %s, C0 = %s, C1 = %s' % tuple([field.arrayToInt(i) for i in (Y, K0, K1, C0, C1)])
+		#print 'Alice:\tY = %s, K0 = %s, K1 = %s, C0 = %s, C1 = %s' % tuple([field.arrayToInt(i) for i in (Y, K0, K1, C0, C1)])
 		self._socket.send(C0)
 		self._socket.send(C1)
 
@@ -90,7 +89,7 @@ class OneTwoOT:
 		import os
 		import otp
 		X = self._socket.recv(n)
-		print 'Bob:\tX = %s' % X
+		#print 'Bob:\tX = %s' % X
 		y = os.urandom(n)
 		gy = field.pow(g, y)
 		if b:
@@ -98,7 +97,7 @@ class OneTwoOT:
 		else:
 			Y = gy
 
-		print 'Bob:\tX = %s, y = %s, gy = %s, Y = %s' % tuple([field.arrayToInt(i) for i in (X, y, gy, Y)])
+		#print 'Bob:\tX = %s, y = %s, gy = %s, Y = %s' % tuple([field.arrayToInt(i) for i in (X, y, gy, Y)])
 		self._socket.send(Y)
 		Kb = field.pow(X, y)
 
@@ -110,5 +109,5 @@ class OneTwoOT:
 			Cb = C0
 
 		pad = otp.OTP()
-		print 'Bob:\tKb = %s, C0 = %s, C1 = %s' % tuple([field.arrayToInt(i) for i in (Kb, C0, C1)])
+		#print 'Bob:\tKb = %s, C0 = %s, C1 = %s' % tuple([field.arrayToInt(i) for i in (Kb, C0, C1)])
 		return pad.decrypt(Cb, n, Kb)[0]
