@@ -110,4 +110,4 @@ class OneTwoOT:
 
 		pad = otp.OTP()
 		#print 'Bob:\tKb = %s, C0 = %s, C1 = %s' % tuple([field.arrayToInt(i) for i in (Kb, C0, C1)])
-		return pad.decrypt(Cb, n, Kb)[0]
+		return str(pad.decrypt(Cb, n, Kb)[0])

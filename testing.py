@@ -63,8 +63,23 @@ print 'dec =', dec
 
 import oneTwoOT
 import socket
+import threading
+import thread
+from time import sleep
+
 prime = 179424673
 f = oneTwoOT.Field(prime)
+
+_lock = threading.Lock()
+
+def printLock(string):
+	with _lock:
+		print string
+		
+def inputLock(prompt = None):
+	with _lock:
+		ret = raw_input(prompt)
+	return ret
 
 def alice():
 	s1 = socket.socket()
@@ -72,9 +87,9 @@ def alice():
 	s1.listen(10)
 	sc, address = s1.accept()
 	pad11.setSocket(sc)
-	print 'Connection from: %s:%s' % address
+	printLock('Connection from: %s:%s' % address)
 	ot = oneTwoOT.OneTwoOT(pad11)
-	ot.send('HiXXX', 'HeyXX', '\003', f, 10)
+	ot.send('Bit 0', 'Bit 1', '\003', f, 10)
 	while not data['done']:
 		sleep(1)	
 	sc.close()
@@ -85,17 +100,17 @@ def bob():
 	s2.connect(("localhost",9999))
 	pad21.setSocket(s2)
 	ot = oneTwoOT.OneTwoOT(pad21)
-	print 'Bob got: %s' % ot.recv(0, '\003', f, 10)
+	b = int(inputLock('Which bit do you want(0/1): '))
+	ot_data = ot.recv(b, '\003', f, 10)
+	printLock('Bob got: %s' % ot_data)
 	data['done'] = True
 	s2.close()
 	
-import thread
+
 
 data = {'done':False}
 thread.start_new_thread(alice, ())
 thread.start_new_thread(bob, ())
-
-from time import sleep
 
 while not data['done']:
 	sleep(1)
