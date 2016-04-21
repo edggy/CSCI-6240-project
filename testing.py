@@ -1,10 +1,10 @@
 import otp
 
 pad11 = otp.OTP('otp11.pad', 32)
-pad11.generate(1024)
+pad11.generate(1024*16)
 pad11.copy('otp21.pad')
 pad12 = otp.OTP('otp12.pad', 64)
-pad12.generate(1024)
+pad12.generate(1024*16)
 pad12.copy('otp22.pad')
 pad21 = otp.OTP('otp21.pad', 32)
 pad22 = otp.OTP('otp22.pad', 64)
@@ -61,6 +61,10 @@ print 'dec =', dec
 # Must get gmpy2 to run the oneTwoOT
 # python -m pip install gmpy2
 
+offset = -20
+syncSize = 64
+syncSuccess = 32
+
 import oneTwoOT
 import socket
 import threading
@@ -88,6 +92,14 @@ def alice():
 	sc, address = s1.accept()
 	pad11.setSocket(sc)
 	printLock('Connection from: %s:%s' % address)
+	if offset > 0: pad11.getBytes(offset)
+	syncCount = 0
+	count = 1
+	while syncCount < syncSuccess: 
+		if count % 2 == 0: pad11.getBytes(syncSize*(count/2))
+		syncCount = pad11.sync(syncSize)
+		count += 1
+	printLock('Alice Sync = %s' % syncCount)
 	ot = oneTwoOT.OneTwoOT(pad11)
 	ot.send('Bit 0', 'Bit 1', '\003', f, 10)
 	while not data['done']:
@@ -99,6 +111,14 @@ def bob():
 	s2 = socket.socket()
 	s2.connect(("localhost",9999))
 	pad21.setSocket(s2)
+	if offset < 0: pad21.getBytes(-offset)
+	syncCount = 0
+	count = 1
+	while syncCount < syncSuccess: 
+		if count % 2 == 1: pad21.getBytes(syncSize*((count+1)/2))
+		syncCount = pad21.sync(syncSize)
+		count += 1
+	printLock('Bob Sync = %s' % syncCount)
 	ot = oneTwoOT.OneTwoOT(pad21)
 	b = int(inputLock('Which bit do you want(0/1): '))
 	ot_data = ot.recv(b, '\003', f, 10)
