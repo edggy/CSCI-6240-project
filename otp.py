@@ -119,7 +119,7 @@ class OTP:
 		key, unusedKey = self._getKey(key, length)
 			
 		# Apply the function
-		return (bytearray(func(msg, key)), unusedKey)
+		return (func(msg, key), unusedKey)
 
 	def encrypt(self, msg, length = None, key = None):
 		'''
@@ -501,12 +501,12 @@ class OTP:
 			
 		return common
 			
-	def resync(self, identity, stringLength = 16, syncSuccess = 8, maxTries = None, flags = 0):
+	def resync(self, identity, syncSize = 16, syncSuccess = 8, maxTries = None, flags = 0):
 		'''
 		Tries to sync several times in order to align the keys
 		
 		@param identity - 0 or 1, ensure it is the opposite of the other party's
-		@param stringLength - The length of the chunk of the key to send across to check
+		@param syncSize - The length of the chunk of the key to send across to check
 		@param syncSuccess - The minimum number of common bytes to consider a sucessful sync
 		@param maxTries - The maximum number of tries to sync
 		@flags - the same meaning as for recv()
@@ -516,11 +516,11 @@ class OTP:
 		syncCount = 0
 		count = 1
 		bytesUsed = 0
-		while syncCount < syncSuccess and count <= tries: 
+		while syncCount < syncSuccess and (count <= maxTries or not maxTries): 
 			if count % 2 == identity: 
-				pad11.getBytes(syncSize*(count/2))
-				bytesUsed += syncSize*(count/2)
-			syncCount = pad11.sync(syncSize)
+				self.getBytes(syncSize*((count+identity)/2))
+				bytesUsed += syncSize*((count+identity)/2)
+			syncCount = self.sync(syncSize)
 			bytesUsed += syncSize
 			count += 1
 			
