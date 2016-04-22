@@ -1,8 +1,24 @@
 class VerifyException(Exception):
 	pass
 
+class NotEnoughKeyException(Exception):
+	pass
+
+import operator
+strop = lambda op: lambda a, b: str(bytearray(map(lambda x, y: op(x, y), bytearray(a), bytearray(b))))
+xorop = strop(operator.xor)
+andop = strop(operator.and_)
+orop = strop(operator.or_)
+
+
 class OTP:
-	def __init__(self, filename = None, defaultLength = None, socket = None):
+	def __init__(self, filename = None, defaultLength = None, socket = None,  overwrites = 1):
+		'''
+		@param filename - The file to use as the key
+		@param defaultLength - The default length to use if none is supplied (If None the length used is the length of the message)
+		@param socket - The socket to transmit encrypted messages over
+		@param overwrites - The number of times the data should be overwritten (0 means the key won't be deleted, THIS IS UNSECURE)
+		'''
 		if filename:
 			import os
 			self._pad = os.path.realpath(filename)
@@ -12,18 +28,36 @@ class OTP:
 		self._length = defaultLength
 		self._socket = socket
 		
-		self.overwrites = 1
+		self.overwrites = overwrites
 		
-
-	def getBytes(self, num, delete = True):
+	def setPad(self, filename):
 		'''
-		gets and returns the last num bytes of a file, deletes them if delete is True
+		Sets a new key file
+		
+		@param filename - The file to use as the key
+		'''
+		import os
+		self._pad = os.path.realpath(filename)
+	
+	def setSocket(self, socket):
+		'''
+		Sets a socket for the send and recv functions
+		
+		@param socket - The socket to use
+		'''
+		self._socket = socket	
+
+	def getBytes(self, num):
+		'''
+		Gets and returns the last num bytes of a file, deletes them if self.delete is True, and overwrites the bytes self.overwrites times
+		
+		@param num - The number of bytes to retrive
 		'''
 		with open(self._pad, "rb+") as f:
 			import os
 			f.seek(-num, os.SEEK_END)
 			res = bytearray(reversed(f.read()))
-			if delete:
+			if self.overwrites:
 				for i in range(self.overwrites):
 					f.seek(-num, os.SEEK_END)
 					garbage = os.urandom(num)
@@ -32,207 +66,297 @@ class OTP:
 				f.truncate()
 		return res    
 
-	def applyFunc(self, msg, func, length, pad = None, delete = True):	
-		if pad is None:
-			# Default pad is the last bytes of the file
-			pad = self.getBytes(length, delete)
-			unusedPad = None
-		else:
-			unusedPad = pad[length:]
-			if len(unusedPad) <= 0:
-				unusedPad = None
-			# Trim pad to length
-			pad = pad[:length]
-		
-		msg = bytearray(msg)
-		pad = bytearray(pad)
-		msgLen = len(msg)
-		if msgLen > length:
+	def _getLength(self, msg, length):
+		if length is None:
+			if self._length:
+				return self._length				
+			else:
+				# Default length is the length of the message
+				return len(msg)		
+		return length
+	
+	def _cleanMsg(self, msg, length):
+		if len(msg) > length:
 			# Trim msg to length
 			msg = msg[:length]
-		elif msgLen < length:
+		elif len(msg) < length:
 			# Pad with zeros
-			msg += bytearray([0] * (length - msgLen))
+			msg += '\0' * (length - len(msg))
+		return msg
+	
+	def _getKey(self, key, length):
+		if key is None:
+			# Default pad is the last bytes of the file
+			return (self.getBytes(length), None)
+		else:
+			# Check we have enough key
+			if len(key) < length:
+				raise NotEnoughKeyException()
+
+			# break the key into the used and unused parts
+			return (key[:length], key[length:])
+		
+	def applyFunc(self, msg, func, length, key = None):
+		'''
+		Applies a given function to a message using the key
+		
+		@param msg - A string to apply the function to
+		@param func - A function that takes two strings (the message and the key) that will be be applied to the message and the key
+		@param length - The length of the output
+		@param key - The key to be used in the function.  If None, the bytes from the end of the file are used
+		
+		@return - A tuple of the resulting value with any unused key, the unused key is None if key = None
+		
+		Note:
+		- The message will be truncated or padded to be of proper length
+		- Will delete the bytes taken from the end of the file if key is None and self.delete is True
+		'''
+		
+		length = self._getLength(msg, length)
+		
+		msg = self._cleanMsg(msg, length)
+		
+		key, unusedKey = self._getKey(key, length)
 			
 		# Apply the function
-		return (bytearray(func(msg, pad)), unusedPad)
+		return (bytearray(func(msg, key)), unusedKey)
 
-	def encrypt(self, msg, length = None, pad = None, delete = True):
-		if length is None:
-			if self._length:
-				length = self._length				
-			else:
-				# Default length is the length of the message
-				length = len(msg)
-		if len(msg) < length:
-			msg += '\0' *  (length - len(msg))
-		elif len(msg) > length:
-			msg = msg[:length]		
-				
-		xor = lambda a, b: map(lambda x, y: x ^ y, a, b)
-		return self.applyFunc(msg, xor, length, pad, delete)
+	def encrypt(self, msg, length = None, key = None):
+		'''
+		Encrypts the mesage using the One-Time-Pad
+		
+		@param msg - A string of the message to encrypt
+		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
+		@param key - The key to use to encrypt the message.  Default to using the file
+		
+		@return - A tuple containing the encrypted message with any unused key, the unused key is None if key = None
+		'''		
+		
+		# Just use the applyFunc with xor
+		return self.applyFunc(msg, xorop, length, key)
 
-	def decrypt(self, cipherText, length = None, pad = None, delete = True):
-		if length is None:
-			if self._length:
-				length = self._length			
-			else:
-				# Default length is the length of the message
-				length = len(cipherText)
-		if len(cipherText) < length:
-			cipherText += '\0' *  (length - len(cipherText))
-		elif len(cipherText) > length:
-			cipherText = cipherText[:length]			
-				
-		return self.encrypt(cipherText, length, pad, delete)
+	def decrypt(self, cipherText, length = None, key = None,):			
+		'''
+		Encrypts the mesage using the One-Time-Pad
+		
+		@param cipherText - A string of the encrypted message
+		@param length - The length of the output.  Defaults to the length of the cipherText if None and defaultLength was not supplied
+		@param key - The key to use to decrypt the message.  Default to using the file
+		
+		@return - A tuple containing the decrypted message with any unused key, the unused key is None if key = None
+		'''		
+		# Decryption is the same as encryption
+		return self.encrypt(cipherText, length, key)
 
 
-	def mac(self, msg, length = None, pad = None, delete = True):
-		if length is None:
-			if self._length:
-				length = self._length			
-			else:
-				# Default length is the length of the message
-				length = len(msg)
-				
-		if len(msg) < length:
-			msg += '\0' *  (length - len(msg))
-		elif len(msg) > length:
-			msg = msg[:length]			
-				
-		if pad is None:
-			# Default pad is the last bytes of the file
-			pad = self.getBytes(length * 2, delete)	
+	def mac(self, msg, length = None, key = None):
+		'''
+		Computes a MAC of the message
+		
+		@param msg - A string of the message to get the MAC of
+		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
+		@param key - The key to use to get the MAC of the message.  Default to using the file.  Must be at least 2 * length
+		
+		@return - A tuple containing the MAC of the message with any unused key, the unused key is None if key = None
+		'''
+		
+		# Get the length to use
+		length = self._getLength(msg, length)
+		
+		# Clean the message	
+		msg = self._cleanMsg(msg, length)			
+		
+		# Get the key and seperate the unused part
+		key, unusedKey = self._getKey(key, length * 2)
 			
-		andop = lambda a, b: map(lambda x, y: x & y, a, b)
-		orop = lambda a, b: map(lambda x, y: x | y, a, b)
+		# Calculate the intermediate result, bitwise 'and' the message and the first part of the key
+		inter, key = self.applyFunc(msg, andop, length, key)
 		
-		inter, pad = self.applyFunc(msg, andop, length, pad, delete)
-		return self.applyFunc(inter, orop, length, pad, delete)
+		# Calculate the MAC, bitwise 'or' the message and the second part of the key
+		res, key = self.applyFunc(inter, orop, length, key)
+		
+		# Assert we used all the key
+		assert key == ''
+		
+		return (res, unusedKey)
 
-	def verify(self, msg, mac, length = None, pad = None, delete = True):
-		if length is None:
-			if self._length:
-				length = self._length				
-			else:
-				# Default length is the length of the message
-				length = len(msg)
-		if pad is None:
-			# Default pad is the last bytes of the file
-			pad = self.getBytes(length * 2, delete)	
-			
-		if len(msg) < length:
-			msg += '\0' *  (length - len(msg))
-		elif len(msg) > length:
-			msg = msg[:length]			
-				
-		calcMac, pad = self.mac(msg, length, pad, delete)
-		return (calcMac == mac, pad)
+	def verify(self, msg, mac, length = None, key = None):
+		'''
+		Verifies a MAC of the message
+		
+		@param msg - A string of the message to verify the MAC of
+		@param mac - The MAC to check against
+		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
+		@param key - The key to use to get the MAC of the message.  Default to using the file.  Must be at least 2 * length
+		
+		@return - A tuple containing whether the verification was successful with any unused key, the unused key is None if key = None
+		'''		
+		# Get the length to use
+		length = self._getLength(msg, length)
+		
+		# Clean the message	
+		msg = self._cleanMsg(msg, length)			
+		
+		# Get the key and seperate the unused part
+		key, unusedKey = self._getKey(key, length * 2)		
+		
+		# Calculate the MAC
+		calcMac, key = self.mac(msg, length, key)
+		
+		# Assert we used all the key
+		assert key == ''
+		
+		return (calcMac == mac, unusedKey)
 
-	def macEncrypt(self, msg, length = None, pad = None, delete = True):
-		if length is None:
-			if self._length:
-				length = self._length			
-			else:
-				# Default length is the length of the message
-				length = len(msg)
-		if len(msg) < length:
-			msg += '\0' *  (length - len(msg))
-		elif len(msg) > length:
-			msg = msg[:length]	
-			
-		if pad is None:
-			# Default pad is the last bytes of the file
-			pad = self.getBytes(length * 4, delete)			
+	def macEncrypt(self, msg, length = None, key = None):
+		'''
+		Compute the MAC and encrypt the entire message
+		
+		@param msg - A string of the message to MAC and encrypt
+		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
+		@param key - The key to use to encrypt the message.  Default to using the file.  Must be at least 4 * length
+		
+		@return - A tuple containing the encrypted message + MAC digest with any unused key, the unused key is None if key = None
+		'''
+		# Get the length to use
+		length = self._getLength(msg, length)
+		
+		# Clean the message	
+		msg = self._cleanMsg(msg, length)			
+		
+		# Get the key and seperate the unused part	
+		key, unusedKey = self._getKey(key, length * 4)		
 				
+		# First get the MAC
+		mac, key = self.mac(msg, length, key)			# Uses 0 to 2 * length
 		
-		mac, pad = self.mac(msg, length, pad, delete)			# Uses 0 to 2 * length
-		enc = self.encrypt(msg + mac, length * 2, pad, delete)		# Uses 2 * length to 4 * length
-		return enc
+		# Them encrypt the digest
+		enc, key = self.encrypt(msg + mac, length * 2, key)		# Uses 2 * length to 4 * length
+		# Assert we used all the key
+		assert key == ''
+		return (enc, unusedKey)
 		
 		
-	
-	def decryptVerify(self, cipherText, length = None, pad = None, delete = True):
-		# macEncrypt(msg) = encrypt(msg:mac(msg))
-		# macEncrypt(msg) = (msg:mac(msg)) ^ OTP3
-		# macEncrypt(msg) = (msg:((msg & OTP1) | OTP2)) ^ OTP3
-		#xor = lambda a, b: map(lambda x, y: x ^ y, a, b)
-		#andop = lambda a, b: map(lambda x, y: x & y, a, b)
-		#orop = lambda a, b: map(lambda x, y: x | y, a, b)		
-	
-		if length is None:
-			if self._length:
-				length = self._length * 2			
-			else:
-				# Default length is the length of the message
-				length = len(cipherText)   					
-				
-		if pad is None:
-			# Default pad is the last bytes of the file
-			pad = self.getBytes(length * 4, delete)
+	def decryptVerify(self, cipherText, length = None, key = None):		
+		'''
+		Decrypts the entire message and verifies its integerty
+
+		@param cipherText - A string of the encrypted message
+		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
+		@param key - The key to use to decrypt and verify the message.  Default to using the file.  Must be at least 4 * length
+
+		@return - A tuple containing the decrypted message with any unused key, the decrypted message is None if verification fails, the unused key is None if key = None
+		'''	
 		
-		savedPad, pad = pad[:length*2], pad[length*2:]
+		# Get the length to use
+		length = self._getLength(cipherText, length)					
 		
-		dec, pad = self.decrypt(cipherText, length * 2, pad, delete)	# Need to use 2 * length to 4 * length
+		# Get the key and seperate the unused part
+		key, unusedKey = self._getKey(key, length * 4)
+		
+		# Break the key into the one for decryption and the one for verification
+		savedPad, key = key[:length*2], key[length*2:]
+		
+		# First decrypt the digest.  Note: Don't forget to use the second part of the key first!
+		dec, key = self.decrypt(cipherText, length * 2, key)	# Need to use 2 * length to 4 * length
+		
+		# Then seperate the message from the MAC
 		msg, mac = dec[:length], dec[length:length*2]
-		vrfy = self.verify(msg, mac, length, savedPad, delete)[0]		# Need to use 0 to 2 * length
+		
+		# Finally verify the message.  Note: Don't forget to use the first part of the key second!
+		vrfy, key = self.verify(msg, mac, length, savedPad)		# Need to use 0 to 2 * length
+		
+		# Assert we used all the key
+		assert key == ''
+		
 		if vrfy:
-			return (msg, pad)
+			return (msg, unusedKey)
 		else:
-			return (None, pad)
+			return (None, unusedKey)	
 
-
-
-	def generate(self, length):
+	def generate(self, length, filename = None):
+		'''
+		Generates a random file
+		
+		@param length - The amount of data in bytes to generate
+		@param filename - The file to write to. Defaults to the original pad file
+		'''
 		import os
+		
+		if filename is None:
+			filename = self._pad
 		data = os.urandom(length)
-		with open(self._pad, "wb") as f:
+		
+		with open(filename, "wb") as f:
 			f.write(data)
 
 	def copy(self, filename):
+		'''
+		Creates a copy of the pad
+		
+		@param filename - The file to copy to
+		'''
 		import shutil
 		shutil.copy2(self._pad, filename)
 		
-	def setSocket(self, socket):
-		self._socket = socket
-		
 	def send(self, data, flags = 0):
 		'''
-		Send data to the socket. The socket must be connected to a remote socket. The optional flags argument has the same meaning as for recv() above. Returns the number of bytes sent. Applications are responsible for checking that all data has been sent; if only some of the data was transmitted, the application needs to attempt delivery of the remaining data. For further information on this concept, consult the Socket Programming HOWTO.
+		Send data across a secure channel. The socket must be connected to a remote socket. The optional flags argument has the same meaning as for recv() above. Returns the number of bytes sent. Applications are responsible for checking that all data has been sent; if only some of the data was transmitted, the application needs to attempt delivery of the remaining data. For further information on this concept, consult the Socket Programming HOWTO.
+		
+		@param data - The data to send across a secure channel
 		'''
 		if not self._socket:
 			import socket
 			raise socket.error
 		
+		# Create the digest
 		enc = self.macEncrypt(data, self._length)[0]
+		
+		# Send it across
 		return self._socket.send(enc, flags)
 	
 	def recv(self, bufsize = None, flags = 0):	
 		'''
-		Receive data from the socket. The return value is a string representing the data received. The maximum amount of data to be received at once is specified by bufsize. See the Unix manual page recv(2) for the meaning of the optional argument flags; it defaults to zero.
+		Receive data from a secure channel. The return value is a string representing the data received. The maximum amount of data to be received at once is specified by bufsize. See the Unix manual page recv(2) for the meaning of the optional argument flags; it defaults to zero.
+		
+		@param bufsize - The amount of data to recive from a secure channel
+		@except VerifyException - Raised if verification failed
 		'''
+		
 		if not self._socket:
 			import socket
 			raise socket.error('Error No Socket')
 		
-		if bufsize is None or bufsize < self._length:
+		# Make the buffer at least as long as the incoming ciphertext
+		if bufsize is None or bufsize < self._length * 2:
 			bufsize = self._length * 2
 		
+		# Recieve the ciphertext
 		cipherText = self._socket.recv(bufsize, flags)
-		dec = self.decryptVerify(cipherText, self._length)
 		
-		if dec[0] is None:
+		# Decrypt the ciphertext
+		dec, key = self.decryptVerify(cipherText, self._length)
+		
+		if dec is None:
 			raise VerifyException('Verification Failed')
 		
-		return dec[0]
+		return dec
 	
 	
-	def sync(self, stringLength = 16, delete = True, flags = 0):
+	def sync(self, stringLength = 16, flags = 0):
+		'''
+		Syncronizes two keys across a network
+		
+		@param stringLength - The length of the chunk of the key to send across to check
+		@flags - the same meaning as for recv()
+		
+		@return The number of bytes the two pads had in common
+		'''
 		import socket
 		if not self._socket:
 			raise socket.error
 		
-		sent = self.getBytes(stringLength, delete)
+		sent = self.getBytes(stringLength)
 		
 		sentLen = 0
 		while sentLen < stringLength:
@@ -373,11 +497,34 @@ class OTP:
 		common = min([len(sent),len(recvd)]) - abs(overlap)
 		
 		if remove > 0:
-			trash = self.getBytes(remove, delete)
+			trash = self.getBytes(remove)
 			
 		return common
 			
+	def resync(self, identity, stringLength = 16, syncSuccess = 8, maxTries = None, flags = 0):
+		'''
+		Tries to sync several times in order to align the keys
+		
+		@param identity - 0 or 1, ensure it is the opposite of the other party's
+		@param stringLength - The length of the chunk of the key to send across to check
+		@param syncSuccess - The minimum number of common bytes to consider a sucessful sync
+		@param maxTries - The maximum number of tries to sync
+		@flags - the same meaning as for recv()
+		
+		@return A tuple of the final differnce between syncCount - syncSuccess (Negative on failure) and the number of bytes used
+		'''
+		syncCount = 0
+		count = 1
+		bytesUsed = 0
+		while syncCount < syncSuccess and count <= tries: 
+			if count % 2 == identity: 
+				pad11.getBytes(syncSize*(count/2))
+				bytesUsed += syncSize*(count/2)
+			syncCount = pad11.sync(syncSize)
+			bytesUsed += syncSize
+			count += 1
 			
+		return (syncCount - syncSuccess, bytesUsed)
 	
 			
 			
