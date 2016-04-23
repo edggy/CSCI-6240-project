@@ -40,8 +40,9 @@ int main(){
   printf("Generating Alice pub key\n");
   CryptoPP::RSA::PublicKey alice_pub(alice_priv);
 
-  printf("Generating Bob priv and pub key\n");  
+  printf("Generating Bob priv key\n");  
   bob_priv.GenerateRandomWithKeySize(rng, 2048);
+  printf("Generating Bob pub key\n");  
   CryptoPP::RSA::PublicKey bob_pub(bob_priv);
 
   printf("Saving keys\n");
