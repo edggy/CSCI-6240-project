@@ -15,6 +15,7 @@ install:
 	sudo apt-get install libcrypto++9-dbg
 	sudo apt-get install libcrypto++-dev
 	sudo apt-get install libcrypto++-doc
+	cd lib/cryptopp && make && make test && sudo make install 
 
 compile:
 	mkdir bin
@@ -24,7 +25,6 @@ keygen:
 	./bin/keygen.o
 
 run: keygen 
-
 
 clean:
 	rm -rf bin
