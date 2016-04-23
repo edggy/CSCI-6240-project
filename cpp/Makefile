@@ -1,8 +1,8 @@
 .PHONY: all install compile keygen run clean
 
-all: install compile run
+all: install compile keygen
 
-all-no-install: compile run
+all-no-install: compile keygen
 
 aes:
 	g++ test.cpp -o bin/aes -std=c++0x -pthread -lcryptopp
@@ -19,14 +19,12 @@ install:
 
 compile:
 	mkdir -p bin
-	#g++ lib/utils.cpp -Wall -Wextra -lcryptopp -o bin/utils.o -pthread
-	#g++ channel/channel.cpp -Wall -Wextra -lcryptopp -o bin/channel.o -pthread
+	g++ users/alice.cpp lib/utils.cpp channel/channel.cpp channel/channel_wrapper.cpp -Wall -lcryptopp -o bin/alice.o 
+	g++ users/bob.cpp lib/utils.cpp channel/channel.cpp channel/channel_wrapper.cpp -Wall -lcryptopp -o bin/bob.o 
 
 keygen:
 	g++ lib/keygen.cpp -Wall -Wextra -lcryptopp -o bin/keygen.o -pthread
 	./bin/keygen.o
-
-run: keygen 
 
 clean:
 	rm -r bin/*
