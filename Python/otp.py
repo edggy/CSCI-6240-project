@@ -17,7 +17,7 @@ class OTP:
 		@param filename - The file to use as the key
 		@param defaultLength - The default length to use if none is supplied (If None the length used is the length of the message)
 		@param socket - The socket to transmit encrypted messages over
-		@param overwrites - The number of times the data should be overwritten (0 means the key won't be deleted, THIS IS UNSECURE)
+		@param overwrites - The number of times the data should be overwritten (0 means the key won't be overwritten)
 		'''
 		if filename:
 			import os
@@ -47,24 +47,35 @@ class OTP:
 		'''
 		self._socket = socket	
 
-	def getBytes(self, num):
+	def getBytes(self, num, delete = True):
 		'''
 		Gets and returns the last num bytes of a file, deletes them if self.delete is True, and overwrites the bytes self.overwrites times
 		
 		@param num - The number of bytes to retrive
+		@param delete - Whether or not to delete the retrived bytes, THIS IS UNSECURE if False
 		'''
 		with open(self._pad, "rb+") as f:
 			import os
 			f.seek(-num, os.SEEK_END)
 			res = bytearray(reversed(f.read()))
-			if self.overwrites:
+			if delete:
 				for i in range(self.overwrites):
 					f.seek(-num, os.SEEK_END)
 					garbage = os.urandom(num)
 					f.write(garbage)
 				f.seek(-num, os.SEEK_END)
 				f.truncate()
-		return res    
+		return res
+	
+	def deleteBytes(self, num):
+		with open(self._pad, "rb+") as f:
+			import os
+			for i in range(self.overwrites):
+				f.seek(-num, os.SEEK_END)
+				garbage = os.urandom(num)
+				f.write(garbage)
+			f.seek(-num, os.SEEK_END)
+			f.truncate()
 
 	def _getLength(self, msg, length):
 		if length is None:
@@ -84,10 +95,10 @@ class OTP:
 			msg += '\0' * (length - len(msg))
 		return msg
 	
-	def _getKey(self, key, length):
+	def _getKey(self, key, length, delete = True):
 		if key is None:
 			# Default pad is the last bytes of the file
-			return (self.getBytes(length), None)
+			return (self.getBytes(length, delete), None)
 		else:
 			# Check we have enough key
 			if len(key) < length:
@@ -96,7 +107,7 @@ class OTP:
 			# break the key into the used and unused parts
 			return (key[:length], key[length:])
 		
-	def applyFunc(self, msg, func, length, key = None):
+	def applyFunc(self, msg, func, length, key = None, delete = True):
 		'''
 		Applies a given function to a message using the key
 		
@@ -104,58 +115,62 @@ class OTP:
 		@param func - A function that takes two strings (the message and the key) that will be be applied to the message and the key
 		@param length - The length of the output
 		@param key - The key to be used in the function.  If None, the bytes from the end of the file are used
+		@param delete - Whether or not to delete the otp bytes, THIS IS UNSECURE if False
 		
 		@return - A tuple of the resulting value with any unused key, the unused key is None if key = None
 		
 		Note:
 		- The message will be truncated or padded to be of proper length
-		- Will delete the bytes taken from the end of the file if key is None and self.delete is True
+		- Will delete the bytes taken from the end of the file if key is None and delete is True
 		'''
 		
 		length = self._getLength(msg, length)
 		
 		msg = self._cleanMsg(msg, length)
 		
-		key, unusedKey = self._getKey(key, length)
+		key, unusedKey = self._getKey(key, length, delete)
 			
 		# Apply the function
-		return (func(msg, key), unusedKey)
+		ret = (func(msg, key), unusedKey)
+		return ret
 
-	def encrypt(self, msg, length = None, key = None):
+	def encrypt(self, msg, length = None, key = None, delete = True):
 		'''
 		Encrypts the mesage using the One-Time-Pad
 		
 		@param msg - A string of the message to encrypt
 		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
 		@param key - The key to use to encrypt the message.  Default to using the file
+		@param delete - Whether or not to delete the otp bytes, THIS IS UNSECURE if False
 		
 		@return - A tuple containing the encrypted message with any unused key, the unused key is None if key = None
 		'''		
 		
 		# Just use the applyFunc with xor
-		return self.applyFunc(msg, xorop, length, key)
+		return self.applyFunc(msg, xorop, length, key, delete)
 
-	def decrypt(self, cipherText, length = None, key = None,):			
+	def decrypt(self, cipherText, length = None, key = None, delete = True):			
 		'''
 		Encrypts the mesage using the One-Time-Pad
 		
 		@param cipherText - A string of the encrypted message
 		@param length - The length of the output.  Defaults to the length of the cipherText if None and defaultLength was not supplied
 		@param key - The key to use to decrypt the message.  Default to using the file
+		@param delete - Whether or not to delete the otp bytes, THIS IS UNSECURE if False
 		
 		@return - A tuple containing the decrypted message with any unused key, the unused key is None if key = None
 		'''		
 		# Decryption is the same as encryption
-		return self.encrypt(cipherText, length, key)
+		return self.encrypt(cipherText, length, key, delete)
 
-
-	def mac(self, msg, length = None, key = None):
+	def mac(self, msg, length = None, key = None, delete = True):
 		'''
 		Computes a MAC of the message
 		
 		@param msg - A string of the message to get the MAC of
 		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
 		@param key - The key to use to get the MAC of the message.  Default to using the file.  Must be at least 2 * length
+		@param delete - Whether or not to delete the otp bytes, THIS IS UNSECURE if False
 		
 		@return - A tuple containing the MAC of the message with any unused key, the unused key is None if key = None
 		'''
@@ -167,7 +182,7 @@ class OTP:
 		msg = self._cleanMsg(msg, length)			
 		
 		# Get the key and seperate the unused part
-		key, unusedKey = self._getKey(key, length * 2)
+		key, unusedKey = self._getKey(key, length * 2, delete)
 			
 		# Calculate the intermediate result, bitwise 'and' the message and the first part of the key
 		inter, key = self.applyFunc(msg, andop, length, key)
@@ -180,7 +195,7 @@ class OTP:
 		
 		return (res, unusedKey)
 
-	def verify(self, msg, mac, length = None, key = None):
+	def verify(self, msg, mac, length = None, key = None, delete = True):
 		'''
 		Verifies a MAC of the message
 		
@@ -188,6 +203,7 @@ class OTP:
 		@param mac - The MAC to check against
 		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
 		@param key - The key to use to get the MAC of the message.  Default to using the file.  Must be at least 2 * length
+		@param delete - Whether or not to delete the otp bytes on success, THIS IS UNSECURE if False
 		
 		@return - A tuple containing whether the verification was successful with any unused key, the unused key is None if key = None
 		'''		
@@ -198,7 +214,7 @@ class OTP:
 		msg = self._cleanMsg(msg, length)			
 		
 		# Get the key and seperate the unused part
-		key, unusedKey = self._getKey(key, length * 2)		
+		key, unusedKey = self._getKey(key, length * 2, False)		
 		
 		# Calculate the MAC
 		calcMac, key = self.mac(msg, length, key)
@@ -206,15 +222,23 @@ class OTP:
 		# Assert we used all the key
 		assert key == ''
 		
+		# Store the result
+		res = (calcMac == mac)
+		
+		# If successful, delete is True and we used the pad, delete the bytes
+		if res and delete and unusedKey is None:
+			self.deleteBytes(length * 2)
+		
 		return (calcMac == mac, unusedKey)
 
-	def macEncrypt(self, msg, length = None, key = None):
+	def macEncrypt(self, msg, length = None, key = None, delete = True):
 		'''
 		Compute the MAC and encrypt the entire message
 		
 		@param msg - A string of the message to MAC and encrypt
 		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
 		@param key - The key to use to encrypt the message.  Default to using the file.  Must be at least 4 * length
+		@param delete - Whether or not to delete the retrived bytes, THIS IS UNSECURE if False
 		
 		@return - A tuple containing the encrypted message + MAC digest with any unused key, the unused key is None if key = None
 		'''
@@ -225,25 +249,28 @@ class OTP:
 		msg = self._cleanMsg(msg, length)			
 		
 		# Get the key and seperate the unused part	
-		key, unusedKey = self._getKey(key, length * 4)		
+		key, unusedKey = self._getKey(key, length * 4, delete)		
 				
 		# First get the MAC
-		mac, key = self.mac(msg, length, key)			# Uses 0 to 2 * length
+		mac, key = self.mac(msg, length, key)				# Uses 0 to 2 * length
 		
 		# Them encrypt the digest
 		enc, key = self.encrypt(msg + mac, length * 2, key)		# Uses 2 * length to 4 * length
+
 		# Assert we used all the key
 		assert key == ''
+		
 		return (enc, unusedKey)
 		
 		
-	def decryptVerify(self, cipherText, length = None, key = None):		
+	def decryptVerify(self, cipherText, length = None, key = None, delete = True):	
 		'''
 		Decrypts the entire message and verifies its integerty
 
 		@param cipherText - A string of the encrypted message
 		@param length - The length of the output.  Defaults to the length of the message if None and defaultLength was not supplied
 		@param key - The key to use to decrypt and verify the message.  Default to using the file.  Must be at least 4 * length
+		@param delete - Whether or not to delete the otp bytes on success, THIS IS UNSECURE if False
 
 		@return - A tuple containing the decrypted message with any unused key, the decrypted message is None if verification fails, the unused key is None if key = None
 		'''	
@@ -252,13 +279,13 @@ class OTP:
 		length = self._getLength(cipherText, length)					
 		
 		# Get the key and seperate the unused part
-		key, unusedKey = self._getKey(key, length * 4)
+		key, unusedKey = self._getKey(key, length * 4, False)
 		
 		# Break the key into the one for decryption and the one for verification
 		savedPad, key = key[:length*2], key[length*2:]
 		
 		# First decrypt the digest.  Note: Don't forget to use the second part of the key first!
-		dec, key = self.decrypt(cipherText, length * 2, key)	# Need to use 2 * length to 4 * length
+		dec, key = self.decrypt(cipherText, length * 2, key)		# Need to use 2 * length to 4 * length
 		
 		# Then seperate the message from the MAC
 		msg, mac = dec[:length], dec[length:length*2]
@@ -270,6 +297,10 @@ class OTP:
 		assert key == ''
 		
 		if vrfy:
+			# If successful, delete is True and we used the pad, delete the bytes
+			if delete and unusedKey is None:
+				self.deleteBytes(length * 4)	
+				
 			return (msg, unusedKey)
 		else:
 			return (None, unusedKey)	
@@ -525,6 +556,12 @@ class OTP:
 			count += 1
 			
 		return (syncCount - syncSuccess, bytesUsed)
+	
+	def heartbeat(self):
+		import socket
+		if not self._socket:
+			raise socket.error		
+	        
 	
 			
 			
