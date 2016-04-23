@@ -15,7 +15,7 @@ install:
 	sudo apt-get install libcrypto++9-dbg
 	sudo apt-get install libcrypto++-dev
 	sudo apt-get install libcrypto++-doc
-	cd lib/cryptopp && make && make test && sudo make install 
+	cd lib/cryptopp; make; make test; make static dynamic cryptest.exe; make libcryptopp.a libcryptopp.so cryptest.exe; sudo make install;
 
 compile:
 	mkdir -p bin
