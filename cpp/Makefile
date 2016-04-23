@@ -1,8 +1,8 @@
 .PHONY: all install compile keygen run clean
 
-all: install compile run clean
+all: install compile run
 
-all-no-install: compile run clean
+all-no-install: compile run
 
 aes:
 	g++ test.cpp -o bin/aes -std=c++0x -pthread -lcryptopp
@@ -27,7 +27,7 @@ run: keygen
 
 
 clean:
-	rm -f bin/*
+	rm -rf bin
 	rm -f *.key
 	rm -f *.pub
 	rm -f *.o

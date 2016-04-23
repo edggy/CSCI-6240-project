@@ -36,7 +36,7 @@ int main(){
   CryptoPP::RSA::PrivateKey bob_priv;
 
   printf("Generating Alice priv key\n");
-  alice_priv.GenerateRandomWithKeySize(rng, 64);
+  alice_priv.GenerateRandomWithKeySize(rng, 2048);
   printf("Generating Alice pub key\n");
   CryptoPP::RSA::PublicKey alice_pub(alice_priv);
 
@@ -45,8 +45,8 @@ int main(){
   CryptoPP::RSA::PublicKey bob_pub(bob_priv);
 
   printf("Saving keys\n");
-  SavePrivateKey("alice.key", alice_priv);
-  SavePublicKey("alice.pub", alice_pub);
-  SavePrivateKey("bob.key", bob_priv);
-  SavePublicKey("bob.pub", bob_pub);
+  SavePrivateKey("bin/alice.key", alice_priv);
+  SavePublicKey("bin/alice.pub", alice_pub);
+  SavePrivateKey("bin/bob.key", bob_priv);
+  SavePublicKey("bin/bob.pub", bob_pub);
 }
