@@ -30,7 +30,7 @@ void split(const std::string& str, const std::string& delim, std::vector<std::st
 std::string str2hexstr(std::string str){
   std::string hexstr;
   char hexchars[] = {'0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'};
-  for (int x=0;x<str.size();x++){
+  for (unsigned long x=0; x<str.size(); x++){
     hexstr+=hexchars[(str[x]&0xf0) >> 4];
     hexstr+=hexchars[str[x]&0x0f];
   }
@@ -39,7 +39,7 @@ std::string str2hexstr(std::string str){
 
 std::string hexstr2str(std::string hexstr){
   std::string str;
-  for (int x=0;x<hexstr.size();x+=2){
+  for (unsigned long x=0; x<hexstr.size(); x+=2){
     str.push_back((char)(int)strtol(hexstr.substr(x,2).c_str(), NULL, 16));
   }
   return str;

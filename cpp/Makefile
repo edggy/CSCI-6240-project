@@ -18,7 +18,9 @@ install:
 	cd lib/cryptopp && make && make test && sudo make install 
 
 compile:
-	mkdir bin
+	mkdir -p bin
+	#g++ lib/utils.cpp -Wall -Wextra -lcryptopp -o bin/utils.o -pthread
+	#g++ channel/channel.cpp -Wall -Wextra -lcryptopp -o bin/channel.o -pthread
 
 keygen:
 	g++ lib/keygen.cpp -Wall -Wextra -lcryptopp -o bin/keygen.o -pthread
@@ -27,7 +29,7 @@ keygen:
 run: keygen 
 
 clean:
-	rm -rf bin
+	rm -r bin/*
 	rm -f *.key
 	rm -f *.pub
 	rm -f *.o
