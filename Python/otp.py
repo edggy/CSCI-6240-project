@@ -557,10 +557,35 @@ class OTP:
 			
 		return (syncCount - syncSuccess, bytesUsed)
 	
-	def heartbeat(self):
-		import socket
+	def heartbeat(self, sendQueue, recvQueue, role, period = .25):
+		import time	
+		
 		if not self._socket:
-			raise socket.error		
+			import socket
+			raise socket.error	
+		
+		start = time.time()
+		lastTime = 0
+		turnToSend = 0
+		
+		while True:
+			now = time.time()
+			if now - lastTime >= period:
+				if turnToSend == role:
+					if len(sendQueue) > 0:
+						data = sendQueue.pop()
+					else:
+						data = '\0'
+					self.send(data)
+					
+			
+		
+	def heartbeater(self, sendQueue, recvQueue, role, period = .25):
+		import thread
+		
+		thread.start_new_thread(self.heartbeat, (sendQueue, recvQueue, role, period))
+		
+		return recvQueue
 	        
 	
 			

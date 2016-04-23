@@ -13,8 +13,8 @@ OTP::OTP(int filedescriptor) {
 	fd = filedescriptor;
 }
 
-OTP::OTP(std::String padFileName) {
-	
+OTP::OTP(char* padFileName) {
+	fd = open(padFileName, 0);
 }
 
 ssize_t OTP::send(const void *buf, size_t len, int flags) {
@@ -25,16 +25,25 @@ ssize_t OTP::recv(void *buf, size_t len, int flags) {
 	
 }
 char* OTP::encrypt(char* enc, const char* msg, const char* key, unsigned long long size) {
-	
+	return xorCharArray(enc, msg, key, size);
 }
 char* OTP::decrypt(char* msg, const char* enc, const char* key, unsigned long long size) {
-	
+	return xorCharArray(enc, msg, key, size);
 }
 char* OTP::mac(char* mac, const char* msg, const char* key, unsigned long long size) {
-	
+	// Size is the size of the msg, key must be 2*size
+	char* key1 = char[size];
+	char* key2 = char[size];
+	key1 = splitCharArray(key1, key2, key, size, 2*size);
+	char* inter = char[size];
+	inter = andCharArray(inter, msg, key1, size);
+	return orCharArray(mac, inter, key2, size);
+
 }
-char* OTP::verify(bool valid, const char* msg, const char* mac, const char* key, unsigned long long size) {
-	
+bool OTP::verify(bool valid, const char* msg, const char* mac, const char* key, unsigned long long size) {
+	char* calcMac = char[size];
+	calcMac = this.mac(calcMac, msg, key, size);
+	return equalCharArray(mac, calcMac, size);
 }
 
 char* OTP::macEncrypt(char* digest, const char* msg, const char* key, unsigned long long size) {
@@ -67,23 +76,30 @@ char* orCharArray(char* output, const char* first, const char* second, unsigned 
 }
 
 char* concatCharArray(char* output, const char* left, const char* right, unsigned long long sizel, unsigned long long sizer) {
-	for(int i = 0; i < sizel; i++) {
+	for(unsigned long long i = 0; i < sizel; i++) {
 		output[i] = left[i];
 	}
-	for(int i = 0; i < sizer; i++) {
+	for(unsigned long long i = 0; i < sizer; i++) {
 		output[sizel + i] = right[i];
 	}
 	return output;
 }
 
 char* splitCharArray(char* left, char* right, const char* charArray, unsigned long long splitPoint, unsigned long long size) {
-	for(int i = 0; i < splitPoint; i++) {
+	for(unsigned long long i = 0; i < splitPoint; i++) {
 		left[i] = charArray[i];
 	}
-	for(int i = splitPoint; i < size; i++) {
+	for(unsigned long long i = splitPoint; i < size; i++) {
 		right[i - splitPoint] = charArray[i];
 	}
 	return left;
+}
+
+bool equalCharArray(const char* charArray1, const char* charArray2, unsigned long long size) {
+	for(unsigned long long i = 0; i < size; i++) {
+		if(left[i] != charArray[i]) return false;
+	}
+	return true;
 }
 
 char* getRandomData(char* output, unsigned long long size) {

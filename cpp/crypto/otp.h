@@ -32,6 +32,8 @@ char* concatCharArray(char* output, const char* left, const char* right, unsigne
 // Splits a charArray into two, left = charArray[0:splitPoint], right = charArray[splitPoint:size]
 char* splitCharArray(char* left, char* right, const char* charArray, unsigned long long splitPoint, unsigned long long size);
 
+bool equalCharArray(const char* charArray1, const char* charArray2, unsigned long long size);
+
 char* getBytes(char* charArray, unsigned long long size);
 
 char* getRandomData(char* output, unsigned long long size);
