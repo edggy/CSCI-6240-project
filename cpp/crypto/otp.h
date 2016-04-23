@@ -1,11 +1,21 @@
 #pragma once
 #include <unistd.h>
 
-// send command
-ssize_t cwrite(int fd, const void *buf, size_t count);
+#include "secureChannel.h"
 
-// recv command
-ssize_t cread(int fd, void *buf, size_t count);
+class OTP: public SecureChannel {
+	private:
+		int fd;
+	public:
+		virtual ssize_t send(const void *buf, size_t len, int flags);
+		virtual ssize_t recv(void *buf, size_t len, int flags);
+		virtual char* encrypt(char* enc, const char* msg, const char* key, unsigned long long size);
+		virtual char* decrypt(char* msg, const char* enc, const char* key, unsigned long long size);
+		virtual char* mac(char* mac, const char* msg, const char* key, unsigned long long size);
+		virtual char* verify(bool valid, const char* msg, const char* mac, const char* key, unsigned long long size);
+		virtual char* macEncrypt(char* digest, const char* msg, const char* key, unsigned long long size);
+		virtual char* decryptVerify(char* msg, const char* digest, const char* key, unsigned long long size);
+};
 
 // Does binary xor between 2 strings
 char* xorCharArray(char* output, const char* first, const char* second, unsigned long long size);
@@ -25,5 +35,7 @@ char* splitCharArray(char* left, char* right, const char* charArray, unsigned lo
 char* getBytes(char* charArray, unsigned long long size);
 
 char* getRandomData(char* output, unsigned long long size);
+
+char* getEndOfFile(char* output, int fd, unsigned long long size);
 	
 	
