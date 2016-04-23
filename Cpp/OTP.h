@@ -22,5 +22,7 @@ char* concatCharArray(char* output, const char* left, const char* right, unsigne
 char* splitCharArray(char* left, char* right, const char* charArray, unsigned long long splitPoint, unsigned long long size);
 
 char* getBytes(char* charArray, unsigned long long size);
+
+char* getRandomData(char* output, unsigned long long size);
 	
 	

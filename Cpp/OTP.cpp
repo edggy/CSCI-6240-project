@@ -1,4 +1,4 @@
-#include "crypto.h"
+#include "otp.h"
 
 const int PACKET_DATA_SIZE = 32;
 const int PACKET_CHECKSUM_SIZE = PACKET_DATA_SIZE;
@@ -44,3 +44,9 @@ char* splitCharArray(char* left, char* right, const char* charArray, unsigned lo
 	}
 	return left;
 }
+
+char* getRandomData(char* output, unsigned long long size) {
+	int fd = open("/dev/urandom", O_RDONLY);
+	read(fd, output, size);
+}
+
