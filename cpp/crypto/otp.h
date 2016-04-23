@@ -12,9 +12,13 @@ class OTP: public SecureChannel {
 		ssize_t send(const void *buf, int flags);
 		ssize_t recv(void *buf, int flags);
 		char* encrypt(char* enc, const char* msg);
+		char* encrypt(char* enc, const char* msg, const char* key, unsigned long long size);
 		char* decrypt(char* msg, const char* enc);
+		char* decrypt(char* msg, const char* enc, const char* key, unsigned long long size);
 		char* mac(char* mac, const char* msg);
+		char* mac(char* mac, const char* msg, const char* key, unsigned long long size);
 		bool verify(const char* msg, const char* mac);
+		bool verify(const char* msg, const char* mac, const char* key, unsigned long long size);
 		char* macEncrypt(char* enc, const char* msg);
 		char* decryptVerify(char* msg, const char* enc);
 };
@@ -40,6 +44,6 @@ char* getBytes(char* charArray, unsigned long long size);
 
 char* getRandomData(char* output, unsigned long long size);
 
-char* getEndOfFile(char* output, int fd, unsigned long long size);
+char* getEndOfFile(char* output, int fd, unsigned long long size, bool truncate);
 	
 	

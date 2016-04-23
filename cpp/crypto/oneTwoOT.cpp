@@ -5,12 +5,15 @@
 #include "otp.h"
 
 OneTwoOT::OneTwoOT(unsigned long long len, unsigned long long gen, Field fld, SecureChannel sc) {
-	length = len;
-	generator = gen;
-	field = fld;
-	chan = sc;
+	this->length = len;
+	this->generator = gen;
+	this->field = fld;
+	this->chan = sc;
 }
 
+void OneTwoOT::send(const char* msg1, const char* msg2) {
+	return this->send(msg1, msg2, this->length, this->generator, this->field
+}
 void OneTwoOT::send(const char* msg1, const char* msg2, unsigned long long length, const char* generator, Field field) {
 
 	char* x = char[length];
