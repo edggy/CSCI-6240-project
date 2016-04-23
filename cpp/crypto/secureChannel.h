@@ -1,4 +1,5 @@
 #pragma once
+#include <unistd.h>
 
 class SecureChannel {
 	public:
@@ -8,6 +9,6 @@ class SecureChannel {
 		virtual char* decrypt(char* msg, const char* enc, const char* key, unsigned long long size);
 		virtual char* mac(char* mac, const char* msg, const char* key, unsigned long long size);
 		virtual bool verify(const char* msg, const char* mac, const char* key, unsigned long long size);
-		virtual char* macEncrypt(char* digest, const char* msg, const char* key, unsigned long long size);
-		virtual char* decryptVerify(char* msg, const char* digest, const char* key, unsigned long long size);
+		virtual char* macEncrypt(char* enc, const char* msg, const char* key, unsigned long long size);
+		virtual char* decryptVerify(char* msg, const char* enc, const char* key, unsigned long long size);
 };
