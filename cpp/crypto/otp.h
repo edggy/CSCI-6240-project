@@ -5,16 +5,18 @@
 
 class OTP: public SecureChannel {
 	private:
-		int fd;
+		int file;
+		int socket;
+		int size;
 	public:
-		virtual ssize_t send(const void *buf, size_t len, int flags);
-		virtual ssize_t recv(void *buf, size_t len, int flags);
-		virtual char* encrypt(char* enc, const char* msg, const char* key, unsigned long long size);
-		virtual char* decrypt(char* msg, const char* enc, const char* key, unsigned long long size);
-		virtual char* mac(char* mac, const char* msg, const char* key, unsigned long long size);
-		virtual char* verify(bool valid, const char* msg, const char* mac, const char* key, unsigned long long size);
-		virtual char* macEncrypt(char* digest, const char* msg, const char* key, unsigned long long size);
-		virtual char* decryptVerify(char* msg, const char* digest, const char* key, unsigned long long size);
+		ssize_t send(const void *buf, int flags);
+		ssize_t recv(void *buf, int flags);
+		char* encrypt(char* enc, const char* msg);
+		char* decrypt(char* msg, const char* enc);
+		char* mac(char* mac, const char* msg);
+		bool verify(const char* msg, const char* mac);
+		char* macEncrypt(char* enc, const char* msg);
+		char* decryptVerify(char* msg, const char* enc);
 };
 
 // Does binary xor between 2 strings

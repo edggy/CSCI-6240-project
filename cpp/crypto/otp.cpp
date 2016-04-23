@@ -5,53 +5,110 @@
 
 #include "otp.h"
 
-const int PACKET_DATA_SIZE = 32;
-const int PACKET_CHECKSUM_SIZE = PACKET_DATA_SIZE;
-const int PACKET_LENGTH = PACKET_DATA_LENGTH + PACKET_CHECKSUM_LENGTH;
-
-OTP::OTP(int filedescriptor) {
-	fd = filedescriptor;
+OTP::OTP(int filefd, int socketfd, int size) {
+	this.file = filefd;
+	this.socket = socketfd;
+	this.size = size;
 }
 
-OTP::OTP(char* padFileName) {
-	fd = open(padFileName, 0);
+OTP::OTP(char* padFileName, int socketfd, int size) {
+	this.file = open(padFileName, 0);
+	this.socket = socketfd;
+	this.size = size;
 }
 
-ssize_t OTP::send(const void *buf, size_t len, int flags) {
+ssize_t OTP::send(const void *buf, int flags) {
+	char* enc = char[this.size * 2];
+	enc = this.macEncrypt(enc, (char*) buf);
+	return send(this.socket, enc, this.size * 2, flags);
+}
+
+ssize_t OTP::recv(void *buf, int flags) {
+	char* enc = char[this.size * 2];
+	enc = recv(this.socket, enc, this.size * 2, flags);
+	return this.decryptVerify(buf, enc);
+}
+char* OTP::encrypt(char* enc, const char* msg) {
+	char* key = char[this.size]
+	key = getEndOfFile(key, this.file, this.size, true);
 	
+	return xorCharArray(enc, msg, key, this.size);
 }
-
-ssize_t OTP::recv(void *buf, size_t len, int flags) {
+char* OTP::decrypt(char* msg, const char* enc) {
+	char* key = char[this.size]
+	key = getEndOfFile(key, this.file, this.size, true);
 	
+	return xorCharArray(enc, msg, key, this.size);
 }
-char* OTP::encrypt(char* enc, const char* msg, const char* key, unsigned long long size) {
-	return xorCharArray(enc, msg, key, size);
-}
-char* OTP::decrypt(char* msg, const char* enc, const char* key, unsigned long long size) {
-	return xorCharArray(enc, msg, key, size);
-}
-char* OTP::mac(char* mac, const char* msg, const char* key, unsigned long long size) {
+char* OTP::mac(char* mac, const char* msg) {
 	// Size is the size of the msg, key must be 2*size
-	char* key1 = char[size];
-	char* key2 = char[size];
-	key1 = splitCharArray(key1, key2, key, size, 2*size);
-	char* inter = char[size];
-	inter = andCharArray(inter, msg, key1, size);
-	return orCharArray(mac, inter, key2, size);
-
-}
-bool OTP::verify(bool valid, const char* msg, const char* mac, const char* key, unsigned long long size) {
-	char* calcMac = char[size];
-	calcMac = this.mac(calcMac, msg, key, size);
-	return equalCharArray(mac, calcMac, size);
-}
-
-char* OTP::macEncrypt(char* digest, const char* msg, const char* key, unsigned long long size) {
+	char* key = char[this.size * 2]
+	key = getEndOfFile(key, this.file, this.size * 2, true);
 	
+	char* key1 = char[this.size];
+	char* key2 = char[this.size];
+	key1 = splitCharArray(key1, key2, key, size, this.size * 2);
+	char* inter = char[this.size];
+	inter = andCharArray(inter, msg, key1, this.size);
+	return orCharArray(mac, inter, key2, this.size);
+
+}
+bool OTP::verify(const char* msg, const char* mac) {
+	// Size is the size of the msg, key must be 2*size
+	char* key = char[this.size * 2]
+	key = getEndOfFile(key, this.file, this.size * 2, false);
+	
+	char* calcMac = char[this.size];
+	calcMac = this.mac(calcMac, msg, key, this.size);
+	bool result = equalCharArray(mac, calcMac, this.size);
+	if(result) {
+		// Delete the bytes used only if verification is successful
+		key = getEndOfFile(key, this.file, this.size * 2, true);
+	}
+	return result;
 }
 
-char* OTP::decryptVerify(char* msg, const char* digest, const char* key, unsigned long long size) {
+char* OTP::macEncrypt(char* enc, const char* msg) {
+	// Size is the size of the msg, key must be 4*size
+	char* key = char[this.size * 4]
+	key = getEndOfFile(key, this.file, this.size * 4, true);
 	
+	char* key1 = char[this.size * 2];
+	char* key2 = char[this.size * 2];
+	key1 = splitCharArray(key1, key2, key, this.size * 2, this.size * 2);
+	char* mac = char[this.size];
+	mac = this.mac(mac, msg, key1, this.size);
+	char* digest = char[this.size * 2];
+	digest = concatCharArray(digest, msg, mac, this.size, this.size)
+	char* enc = char[this.size * 2];
+	return this.encrypt(enc, digest, key2, this.size * 2);
+}
+
+char* OTP::decryptVerify(char* msg, const char* enc) {
+	// Size is the size of the msg, key must be 4*size
+	char* key = char[this.size * 4]
+	key = getEndOfFile(key, this.file, this.size * 4, false);
+	
+	char* key1 = char[this.size * 2];
+	char* key2 = char[this.size * 2];
+	key1 = splitCharArray(key1, key2, key, this.size * 2, this.size * 2);
+	
+	char* digest = char[this.size * 2];
+	digest = this.decrypt(digest, enc, key2, this.size * 2);
+	
+	char* msg = char[this.size];
+	char* mac = char[this.size];
+	msg = splitCharArray(msg, mac, digest, this.size, this.size);
+	
+	bool valid = this.verify(msg, mac, key1, this.size);
+	if(valid) {
+		// Delete the bytes used only if verification is successful
+		key = getEndOfFile(key, this.file, this.size * 4, true);
+	}
+	else {
+		msg = NULL;
+	}
+	return msg;
 }
 
 char* xorCharArray(char* output, const char* first, const char* second, unsigned long long size) {
@@ -108,9 +165,9 @@ char* getRandomData(char* output, unsigned long long size) {
 	return output;
 }
 
-char* getEndOfFile(char* output, int fd, unsigned long long size) {
+char* getEndOfFile(char* output, int fd, unsigned long long size, bool truncate) {
 	// off_t lseek(int fd, off_t offset, int whence);
-	lseek(fd, -size, SEEK_END);
+	off_t offset = lseek(fd, -size, SEEK_END);
 	
 	// ssize_t read(int fd, void *buf, size_t count);
 	char* buffer = char[size];
@@ -119,6 +176,10 @@ char* getEndOfFile(char* output, int fd, unsigned long long size) {
 	
 	for(unsigned long long i = 0; i < size; i++) {
 		output[i] = buffer[size - i];
+	}
+	
+	if(truncate) {
+		ftruncate(fd, offset);
 	}
 	return output;
 }
