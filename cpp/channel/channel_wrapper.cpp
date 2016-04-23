@@ -1,7 +1,7 @@
 #include "channel_wrapper.h"
 #include "stdio.h"
 
-ChannelWrapper::ChannelWrapper(int socketfd_in = -1, int port, std::string init_nonce){
+ChannelWrapper::ChannelWrapper(int socketfd_in = -1){
 
 	// Initialize values
 	socketfd = socketfd_in;

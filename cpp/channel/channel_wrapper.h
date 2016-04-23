@@ -7,7 +7,7 @@ class ChannelWrapper: public SecureChannel{
 	
 	public:
 		int socketfd; 
-		ChannelWrapper(int socketfd = -1, int port, std::string init_nonce);
+		ChannelWrapper(int socketfd = -1);
 
 		bool start_server();
 		bool connect_to_server();
