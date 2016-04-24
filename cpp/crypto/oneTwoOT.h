@@ -5,12 +5,15 @@
 class OneTwoOT {
 	private:
 		unsigned long long length;
-		unsigned long long generator;
-		Field field;
-		SecureChannel chan;
+		const char* generator;
+		Field* field;
+		SecureChannel* chan;
 		
 	public:
-		void send(const char* msg1, const char* msg2);
-		char* recv(char* output, bool bit);
-}
+		OneTwoOT(unsigned long long len, const char* gen, Field* fld, SecureChannel* sc);
+		void otsend(const char* msg0, const char* msg1);
+		void otsend(const char* msg0, const char* msg1, unsigned long long length, const char* generator, Field* field);
+		char* otrecv(char* output, bool bit);
+		char* otrecv(char* output, bool bit, unsigned long long length, const char* generator, Field* field);
+};
 
