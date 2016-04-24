@@ -39,15 +39,15 @@ TYPE NormalGate::computeGate(TYPE k0, TYPE k1)
 GarbledGate NormalGate::garble(WIRE k0, WIRE k1, WIRE out)
 {
 	GARBLEDTABLE gtable;
-	TYPE key1, key2, key3, val;
+	TYPE key0, key1, key_out, X;
 
 	for(NORMALTUPLE tup : table)
 	{
-		key1 = (std::get<0>(tup) == 0) ? out.first : out.second;
-		key2 = (std::get<1>(tup) == 0) ? out.first : out.second;
-		key3 = (std::get<2>(tup) == 0) ? out.first : out.second;
-		val = dummy::OTP(key1, dummy::OTP(key2, key3));
-		gtable.push_back( std::make_pair(val, dummy::computeMac(val)) );
+		key0 = (int(std::get<0>(tup)) == 0) ? k0.first : k0.second;
+		key1 = (int(std::get<1>(tup)) == 0) ? k1.first : k1.second;
+		key_out = (int(std::get<2>(tup)) == 0) ? out.first : out.second;
+		X = dummy::OTP(key0, dummy::OTP(key1, key_out));
+		gtable.push_back( std::make_pair(X, dummy::computeMac(key_out)) );
 	}
 
 	// randomly shuffle the entries
@@ -61,15 +61,30 @@ TYPE GarbledGate::computeGate(TYPE k0, TYPE k1)
 	TYPE key = dummy::OTP(k0, k1);
 	for(GARBLEDPAIR pair : table)
 	{
-		result = dummy::OTP(key, pair.first);
-		if (dummy::computeMac(result) == pair.second)
+		//check if result = key_out and matches MACs
+		result = dummy::OTP(key, pair.first); //pair.first = X;
+		if (dummy::computeMac(result) == pair.second) //pair.second = MAC
 		{
-			return pair.first;
+			return result;
 		}
 	}
 }
 
-
+TYPE Circuit::getResult(WIRE original, WIRE garbled, TYPE val)
+{
+	if (val == garbled.first)
+	{
+		return original.first;
+	}
+	else if (val == garbled.second)
+	{
+		return original.second;
+	}
+	else
+	{
+		assert(false);
+	}
+}
 
 void MillionaireCircuit::generateCircuit()
 {
@@ -77,6 +92,7 @@ void MillionaireCircuit::generateCircuit()
 
 	// gates.push_back( NormalGate(and_gate) );
 }
+
 
 
 

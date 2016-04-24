@@ -42,14 +42,14 @@ namespace dummy
 
 
 
-class Gate
-{
-public:
+// class Gate
+// {
+// public:
 
-private:
-	Gate *prev1, *prev2, *next;
-	WIRE *in1, *in2, *out;
-};
+// private:
+// 	Gate *prev1, *prev2, *next;
+// 	WIRE *in1, *in2, *out;
+// };
 
 
 class GarbledGate
@@ -78,15 +78,16 @@ private:
 class Circuit
 {
 public:
-	Circuit();
-	~Circuit();
+	Circuit() = default;
+	~Circuit() = default;
 
 	WIRE garbleWire(TYPE_KEY field) { return std::make_pair(dummy::myrandom(field), dummy::myrandom(field)); }
-	virtual void garble();
-	virtual void compute();
+	// virtual void garble();
+	// virtual void compute();
+	TYPE getResult(WIRE original, WIRE garbled, TYPE val);
 protected:
-	std::vector<NormalGate> gates;
-	std::vector<WIRE> wires;
+	// std::vector<NormalGate> gates;
+	// std::vector<WIRE> wires;
 };
 
 class MillionaireCircuit : public Circuit
