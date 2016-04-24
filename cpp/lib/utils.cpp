@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sstream>
@@ -200,6 +201,97 @@ std::string aesDecrypt(std::string ciphertext, byte key[], byte iv[]){
     stfDecryptor.MessageEnd();
 
     return decryptedtext;
+}
+
+std::string recv_aes_encrypted(int sock, std::string hmac_password, std::string aes_key, std::string aes_iv, std::string my_nonce, std::string &their_nonce){
+
+  // Read message
+  char buffer[MAX_MSG_SIZE+1];
+
+  int len = recv(sock, buffer, MAX_MSG_SIZE, 0);
+  if(len > 0){
+    buffer[len] = 0;
+  }else{
+    return "";
+  }
+
+  // Toss into string structure
+  std::string enc_content(buffer);
+  enc_content = hexstr2str(enc_content);
+
+  // Process HMAC
+  std::vector<std::string> hmac_data;
+  split(enc_content, "|", hmac_data);
+
+  // Check MAC and store ciphertext
+  std::string ciphertext = "";
+  if(hmac_data.size() >= 2 && hmac_hash(hmac_password, hmac_data[0]) == hmac_data[1]){
+    ciphertext = hmac_data[0];
+  }else{
+    return "";
+  }
+
+  // Decrypt message
+  ciphertext = hexstr2str(ciphertext);
+  std::string plaintext;
+  if(ciphertext != ""){
+    byte key[CryptoPP::AES::DEFAULT_KEYLENGTH], iv[CryptoPP::AES::BLOCKSIZE];
+    memcpy(key, aes_key.c_str(), CryptoPP::AES::DEFAULT_KEYLENGTH);
+    memcpy(iv, aes_iv.c_str(), CryptoPP::AES::BLOCKSIZE);
+    plaintext = aesDecrypt(ciphertext, key, iv);
+    plaintext = plaintext.substr(0, plaintext.size()-1);
+  }else{
+    return "";
+  }
+
+  plaintext = hexstr2str(plaintext);
+
+  // Check nonce and return plaintext
+  std::vector<std::string> nonce_data;
+  split(plaintext, "|", nonce_data);  
+  if(nonce_data.size() >= 3 && nonce_data[2] == my_nonce){
+    their_nonce = nonce_data[1];
+    return nonce_data[0];
+  }else{
+    return "";
+  }
+}
+
+bool send_aes_encrypted(int sock, std::string msg, std::string aes_key, std::string aes_iv, std::string hmac_password, std::string their_nonce, std::string &my_nonce){
+
+  // Pad message
+  if(msg.length() < MAX_MSG_SIZE){
+
+  }
+
+  // Generate nonce
+  std::string random_noise = str2hexstr(readRand(16));
+  my_nonce = random_noise;
+
+  // Wrap message with nonce
+  std::string wrapped_message = str2hexstr(msg + "|" + my_nonce + "|" + their_nonce);
+
+  // Encrypt message with AES
+  byte key[CryptoPP::AES::DEFAULT_KEYLENGTH], iv[CryptoPP::AES::BLOCKSIZE];
+  memcpy(key, aes_key.c_str(), 16);
+  memcpy(iv, aes_iv.c_str(), 16);
+  std::string encrypted_message = aesEncrypt(wrapped_message, key, iv);
+  encrypted_message = str2hexstr(encrypted_message);
+
+  // Sign message with HMAC
+  std::string signed_message = encrypted_message + "|" + hmac_hash(hmac_password, encrypted_message);
+  signed_message = str2hexstr(signed_message);
+
+  // Send message
+  if(sock >= 0){
+    if(send(sock, signed_message.c_str(), signed_message.length(), 0) >= 0){
+      return true;
+    }else{
+      return false;
+    }
+  }else{
+    return false;
+  }
 }
 
 /*

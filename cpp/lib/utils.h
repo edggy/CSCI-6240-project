@@ -6,6 +6,8 @@
 #include "cryptopp/rsa.h"
 #include "cryptopp/files.h"
 
+#define MAX_MSG_SIZE 4096
+
 // split a string based on a delimiter
 void split(const std::string& str, const std::string& delim, std::vector<std::string>& parts);
 
@@ -36,3 +38,7 @@ std::string decryptWithBothKeys(std::string key1, std::string key2, std::string 
 // enc and dec with single keys
 std::string aesEncrypt(std::string plaintext, byte key[], byte iv[]);
 std::string aesDecrypt(std::string plaintext, byte key[], byte iv[]);
+
+// send and recv enc msgs over socket
+std::string recv_aes_encrypted(int sock, std::string hmac_password, std::string aes_key, std::string aes_iv, std::string my_nonce, std::string &their_nonce);
+bool send_aes_encrypted(int sock, std::string msg, std::string aes_key, std::string aes_iv, std::string hmac_password, std::string their_nonce, std::string &my_nonce);

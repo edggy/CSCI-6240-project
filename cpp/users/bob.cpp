@@ -12,6 +12,13 @@
 
 #define MAX_MSG_SIZE 4096
 
+std::string aes_key;
+std::string aes_iv;
+std::string hmac_password;
+std::string init_nonce;
+std::string my_nonce;
+std::string their_nonce;
+
 int main(int argc, char* argv[]){
 
 	// Check parameters
@@ -59,6 +66,7 @@ int main(int argc, char* argv[]){
 	// Generate Bob's half of the key and encrypt it
 	std::string bob_key_half = readRand(16);
 	std::string encrypted_bob_key_half = encryptWithBothKeys("alice.pub", "bob.key", bob_key_half);
+	encrypted_bob_key_half = str2hexstr(encrypted_bob_key_half);
 
 	// Send encrypted key to Alice
 	if(send(socket_fd, encrypted_bob_key_half.c_str(), encrypted_bob_key_half.length(), 0) < 0){
@@ -87,12 +95,24 @@ int main(int argc, char* argv[]){
 
     // Determine session key and split it into aes_key, aes_iv, hmac_password, and init_nonce
     std::string session_key = session_hash(bob_key_half, alice_key_half);
-    std::string aes_key = hexstr2str(session_key.substr(0,32));
-    std::string aes_iv = hexstr2str(session_key.substr(32,32));
-    std::string hmac_password = session_key.substr(64,32);
-    std::string init_nonce = session_key.substr(96,32);
+    aes_key = hexstr2str(session_key.substr(0,32));
+    aes_iv = hexstr2str(session_key.substr(32,32));
+    hmac_password = session_key.substr(64,32);
+    init_nonce = session_key.substr(96,32);
 
     printf("Here is the nonce: %s\n", init_nonce.c_str());
+    my_nonce = init_nonce;
+    their_nonce = init_nonce;
+
+    std::string recvd = recv_aes_encrypted(socket_fd, hmac_password, aes_key, aes_iv, my_nonce, their_nonce);
+    printf("Here is a message: %s\n", recvd.c_str());
+
+    std::string msg = "Hi Alice! What's up?";
+    if(send_aes_encrypted(socket_fd, msg, aes_key, aes_iv, hmac_password, their_nonce, my_nonce)){
+    	printf("Message sent\n");
+    }else{
+    	printf("Error sending message\n");
+    }
 
 	return 0;
 }

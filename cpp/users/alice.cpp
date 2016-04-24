@@ -9,6 +9,14 @@
 
 #define MAX_MSG_SIZE 4096
 
+int client_socket_fd;
+std::string aes_key;
+std::string aes_iv;
+std::string hmac_password;
+std::string init_nonce;
+std::string my_nonce;
+std::string their_nonce;
+
 int main(int argc, char* argv[]){
 
 	// Check parameters
@@ -22,7 +30,7 @@ int main(int argc, char* argv[]){
 	char read_buffer[MAX_MSG_SIZE+1];
 	std::string write_buffer;
 	int return_call = -1;
-	int socket_fd, new_socket_fd;
+	int socket_fd;
 	struct sockaddr_in server, client;
 	socklen_t client_length;
 
@@ -52,10 +60,10 @@ int main(int argc, char* argv[]){
 
     // Bind client when it arrives
     client_length = sizeof(client);
-    new_socket_fd = accept(socket_fd, (struct sockaddr*) &client, &client_length);
+    client_socket_fd = accept(socket_fd, (struct sockaddr*) &client, &client_length);
 
     // Validity check
-    if(new_socket_fd < 0){
+    if(client_socket_fd < 0){
     	printf("Error accepting client\n");
     	return -1;
     }
@@ -65,7 +73,7 @@ int main(int argc, char* argv[]){
     // Begin key agreement
     // Read Bob's half of the key (encrypted)
     bzero(read_buffer, MAX_MSG_SIZE+1);
-    return_call = recv(new_socket_fd, read_buffer, MAX_MSG_SIZE, 0);
+    return_call = recv(client_socket_fd, read_buffer, MAX_MSG_SIZE, 0);
     if(return_call < 0){
     	printf("Error reading Bob's encrypted key\n");
     	return -1;
@@ -87,7 +95,7 @@ int main(int argc, char* argv[]){
 
 	// Send key half (encrypted) to Bob
 	write_buffer = str2hexstr(encrypted_alice_key);
-	if(send(new_socket_fd, write_buffer.c_str(), write_buffer.length(), 0) < 0){
+	if(send(client_socket_fd, write_buffer.c_str(), write_buffer.length(), 0) < 0){
 		printf("Error sending encrypted key\n");
 		return -1;
 	}
@@ -96,12 +104,24 @@ int main(int argc, char* argv[]){
 
 	// Determine session key and split it into aes_key, aes_iv, hmac_password, and init_nonce
 	std::string session_key = session_hash(bob_key_half, alice_key_half);
-	std::string aes_key = hexstr2str(session_key.substr(0,32));
-	std::string aes_iv = hexstr2str(session_key.substr(32,32));
-	std::string hmac_password = session_key.substr(64,32);
-	std::string init_nonce = session_key.substr(96,32);
+	aes_key = hexstr2str(session_key.substr(0,32));
+	aes_iv = hexstr2str(session_key.substr(32,32));
+	hmac_password = session_key.substr(64,32);
+	init_nonce = session_key.substr(96,32);
 
     printf("Here is the nonce: %s\n", init_nonce.c_str());
+    my_nonce = init_nonce;
+    their_nonce = init_nonce;
+
+    std::string msg = "Hi Bob!";
+    if(send_aes_encrypted(client_socket_fd, msg, aes_key, aes_iv, hmac_password, their_nonce, my_nonce)){
+    	printf("Message sent\n");
+    }else{
+    	printf("Error sending message\n");
+    }
+
+    std::string recvd = recv_aes_encrypted(client_socket_fd, hmac_password, aes_key, aes_iv, my_nonce, their_nonce);
+    printf("Here is a message: %s\n", recvd.c_str());
 
 	return 0;
 }
