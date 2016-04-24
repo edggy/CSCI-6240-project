@@ -4,13 +4,19 @@ Optional project for CSCI 6240
 gmpy2 is required for the 1-2 OT
 python -m pip install gmpy2
 
-To run the CPP version do the following:
+To run the CPP version on Ubuntu or Windows (Cygwin) do the following:
 
 Navigate to the Makefile and run
 
     make all
 
-This will install the CryptoPP library used.
+This will install the CryptoPP library used and compile everything.
+
+For a Mac, you must install the CryptoPP library separately. The command should be
+
+    brew install libcryptopp
+    
+Or something of the sort (sorry). 
 
 If you already have the library installed just run
 
