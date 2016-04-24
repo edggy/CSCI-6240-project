@@ -1,24 +1,43 @@
 #include "field.h"
+#include "../lib/cryptopp/integer.h"
+#include "../lib/cryptopp/nbtheory.h"
+#include <sstream>
 
-Field::Field(char* mod, unsigned long long s) {
-	this->modulus = mod;
-	this->size = s;
+Field::Field(CryptoPP::Integer modulus) {
+	this->modulus = modulus;
 }
-char* Field::pow(char* output, const char* base, const char* exponent) {
+
+CryptoPP::Integer Field::pow(const CryptoPP::Integer base, const CryptoPP::Integer exp) {
+	return a_exp_b_mod_c(base, exp, modulus);
+}
+
+CryptoPP::Integer Field::mul(const CryptoPP::Integer a, const CryptoPP::Integer b) {
+	return a_times_b_mod_c(a, b, modulus);
+}
+
+CryptoPP::Integer Field::div(const CryptoPP::Integer a, const CryptoPP::Integer b) {
 	return output;
 }
-char* Field::mul(char* output, const char* num1, const char* num2) {
-	return output;
+
+CryptoPP::Integer Field::add(const CryptoPP::Integer a, const CryptoPP::Integer b) {
+	return (a+b)%modulus;
 }
-char* Field::div(char* output, const char* numerator, const char* denominator) {
-	return output;
+
+CryptoPP::Integer Field::sub(const CryptoPP::Integer a, const CryptoPP::Integer b) {
+	return (a-b)%modulus;
 }
-char* Field::add(char* output, const char* num1, const char* num2) {
-	return output;
+
+CryptoPP::Integer Field::mod(const CryptoPP::Integer num) {
+	return num%modulus;
 }
-char* Field::sub(char* output, const char* num1, const char* num2) {
-	return output;
+
+char* to_char_arr(const CryptoPP::Integer num){
+
+	std::stringstream ss;
+	ss << num;
+	return ss.str().c_str();
 }
-char* Field::mod(char* output, const char* num) {
-	return output;
+
+CryptoPP::Integer to_crytopp_int(const char* num){
+	return CryptoPP::Integer(num);
 }

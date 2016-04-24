@@ -1,15 +1,18 @@
 #pragma once
+#include "../lib/cryptopp/integer.h"
 
 class Field {
 	private:
-		unsigned long long size;
-		char* modulus;
+		CryptoPP::Integer modulus;
 	public:
-		Field(char* modulus, unsigned long long size);
-		char* pow(char* output, const char* base, const char* exponent);
-		char* mul(char* output, const char* num1, const char* num2);
-		char* div(char* output, const char* numerator, const char* denominator);
-		char* add(char* output, const char* num1, const char* num2);
-		char* sub(char* output, const char* num1, const char* num2);
-		char* mod(char* output, const char* num);
+		Field(CryptoPP::Integer modulus);
+		CryptoPP::Integer pow(const CryptoPP::Integer base, const CryptoPP::Integer exp);
+		CryptoPP::Integer mul(const CryptoPP::Integer a, const CryptoPP::Integer b);
+		CryptoPP::Integer div(const CryptoPP::Integer a, const CryptoPP::Integer b);
+		CryptoPP::Integer add(const CryptoPP::Integer a, const CryptoPP::Integer b);
+		CryptoPP::Integer sub(const CryptoPP::Integer a, const CryptoPP::Integer b);
+		CryptoPP::Integer mod(const CryptoPP::Integer num);
 };
+
+char* to_char_arr(const CryptoPP::Integer num);
+CryptoPP::Integer to_crytopp_int(const char* num);
