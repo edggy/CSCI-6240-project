@@ -15,9 +15,9 @@ CryptoPP::Integer Field::mul(const CryptoPP::Integer a, const CryptoPP::Integer 
 	return a_times_b_mod_c(a, b, modulus);
 }
 
-// CryptoPP::Integer Field::div(const CryptoPP::Integer a, const CryptoPP::Integer b) {
-// 	return a;
-// }
+CryptoPP::Integer Field::div(const CryptoPP::Integer a, const CryptoPP::Integer b) {
+	return mul(a, b.InverseMod(modulus));
+}
 
 CryptoPP::Integer Field::add(const CryptoPP::Integer a, const CryptoPP::Integer b) {
 	return (a+b)%modulus;

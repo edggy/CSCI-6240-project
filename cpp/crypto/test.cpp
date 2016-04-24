@@ -21,7 +21,8 @@ int main(int argc, char* argv[]) {
     
     std::cout << decrypted << std::endl;
 
-    Field f(10000);
-    std::cout << "9999+1111 mod 10000: " << f.add(9999, 1111) << std::endl;
-    std::cout << "3-50 mod 10000: " << f.sub(3, 50) << std::endl;
+    Field f(10069); // its a prime i swear
+    std::cout << "9999+1111 mod 10069: " << f.add(9999, 1111) << std::endl;
+    std::cout << "3-50 mod 10069: " << f.sub(3, 50) << std::endl;
+    std::cout << "50 / 2 mod 10069: " << f.div(50, 2) << std::endl;
 }
