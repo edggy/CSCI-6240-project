@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 *.o
+*.out
 
 # Installer logs
 pip-log.txt
@@ -34,3 +35,5 @@ target/
 
 *.pad
 *.DS_Store
+*.pub
+*.key
