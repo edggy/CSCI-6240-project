@@ -15,9 +15,9 @@ CryptoPP::Integer Field::mul(const CryptoPP::Integer a, const CryptoPP::Integer 
 	return a_times_b_mod_c(a, b, modulus);
 }
 
-CryptoPP::Integer Field::div(const CryptoPP::Integer a, const CryptoPP::Integer b) {
-	return output;
-}
+// CryptoPP::Integer Field::div(const CryptoPP::Integer a, const CryptoPP::Integer b) {
+// 	return a;
+// }
 
 CryptoPP::Integer Field::add(const CryptoPP::Integer a, const CryptoPP::Integer b) {
 	return (a+b)%modulus;
@@ -31,7 +31,7 @@ CryptoPP::Integer Field::mod(const CryptoPP::Integer num) {
 	return num%modulus;
 }
 
-char* to_char_arr(const CryptoPP::Integer num){
+const char* to_char_arr(const CryptoPP::Integer num){
 
 	std::stringstream ss;
 	ss << num;
