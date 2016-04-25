@@ -184,11 +184,27 @@ class OTP:
 		# Get the key and seperate the unused part
 		key, unusedKey = self._getKey(key, length * 2, delete)
 			
+		def macFunc(msg, key):
+			msgLen = len(msg)
+			msg = bytearray(msg)
+			key = bytearray(key)
+			for byte in key:
+				bit = 1
+				for b in range(8):
+					curBit = (byte & bit)
+					if curBit:
+						msg[msgLen/2:] = xorop(msg[:msgLen/2], msg[msgLen/2:])
+					else:
+						msg.append(msg.pop(0))
+					bit <<= 1
+			return str(msg)
+			
+			
 		# Calculate the intermediate result, bitwise 'and' the message and the first part of the key
-		inter, key = self.applyFunc(msg, andop, length, key)
+		inter, key = self.applyFunc(msg, macFunc, length, key)
 		
 		# Calculate the MAC, bitwise 'or' the message and the second part of the key
-		res, key = self.applyFunc(inter, orop, length, key)
+		res, key = self.applyFunc(inter, macFunc, length, key)
 		
 		# Assert we used all the key
 		assert key == ''
