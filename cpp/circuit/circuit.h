@@ -41,18 +41,17 @@ namespace dummy
 }
 
 
+class Gate
+{
+public:
+	Gate() = default;
+	void setParents(Gate *prev0, Gate *prev1);
+private:
+	Gate *prev0, *prev1, *next;
+	WIRE *in0, *in1, *out;
+};
 
-// class Gate
-// {
-// public:
-
-// private:
-// 	Gate *prev1, *prev2, *next;
-// 	WIRE *in1, *in2, *out;
-// };
-
-
-class GarbledGate
+class GarbledGate : Gate
 {
 public:	
 	GarbledGate(GARBLEDTABLE g) :
@@ -63,7 +62,7 @@ private:
 };
 
 
-class NormalGate
+class NormalGate : Gate
 {
 public:
 	NormalGate(NORMALTABLE t) :
@@ -75,26 +74,27 @@ private:
 };
 
 
+
 class Circuit
 {
 public:
 	Circuit() = default;
 	~Circuit() = default;
-
+	WIRE defaultWire() { return {0,1}; }
 	WIRE garbleWire(TYPE_KEY field) { return std::make_pair(dummy::myrandom(field), dummy::myrandom(field)); }
 	// virtual void garble();
 	// virtual void compute();
 	TYPE getResult(WIRE original, WIRE garbled, TYPE val);
 protected:
-	// std::vector<NormalGate> gates;
-	// std::vector<WIRE> wires;
+	std::vector<NormalGate> gates;
+	std::vector<WIRE> wires;
 };
 
 class MillionaireCircuit : public Circuit
 {
 public:
-	// MillionaireCircuit() =
+	MillionaireCircuit() = default;
 	void generateCircuit();
 private:
-
+	NORMALTABLE eqls_table, and_table, or_table, gt_table;
 };

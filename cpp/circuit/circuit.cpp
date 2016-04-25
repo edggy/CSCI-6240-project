@@ -14,16 +14,19 @@ TYPE dummy::myrandom (TYPE_KEY field) { return std::rand() % field;}
 TYPE_MAC dummy::computeMac(TYPE i) { return i; }
 
 
-// Gate::Gate(Gate *prev1, Gate *prev2)
-// {
-// 	// doubly linked. Is this necessary? Not really.
-// 	this->prev1 = prev1;
-// 	prev1->next = this;
-// 	this->prev2 = prev2;
-// 	prev2->next = this;
-// 	next = nullptr;
-// }
 
+void Gate::setParents(Gate *prev0, Gate *prev1)
+{
+	this->prev0 = prev0;
+	this->in0 = prev0->out;
+	prev0->next = this;
+
+	this->prev1 = prev1;
+	this->in1 = prev1->out;
+	prev1->next = this;
+}
+
+// Not necessary; useful for testing
 TYPE NormalGate::computeGate(TYPE k0, TYPE k1)
 {
 	for(NORMALTUPLE tup : table)
@@ -86,11 +89,59 @@ TYPE Circuit::getResult(WIRE original, WIRE garbled, TYPE val)
 	}
 }
 
+
+
 void MillionaireCircuit::generateCircuit()
 {
-	// NORMALTABLE	and_gate = { {0,0,0}, {0,1,0}, {1,0,0}, {1,0,0} };
+	int bits = sizeof(TYPE) * 8;
 
-	// gates.push_back( NormalGate(and_gate) );
+	//Generating default gates needed
+	eqls_table.push_back(NORMALTUPLE {0,0,1});
+	eqls_table.push_back(NORMALTUPLE {0,1,0});
+	eqls_table.push_back(NORMALTUPLE {1,0,0});
+	eqls_table.push_back(NORMALTUPLE {1,1,1});
+
+	and_table.push_back(NORMALTUPLE {0,0,0});
+	and_table.push_back(NORMALTUPLE {0,1,0});
+	and_table.push_back(NORMALTUPLE {1,0,0});
+	and_table.push_back(NORMALTUPLE {1,1,1});
+	
+	or_table.push_back(NORMALTUPLE {0,0,0});
+	or_table.push_back(NORMALTUPLE {0,1,1});
+	or_table.push_back(NORMALTUPLE {1,0,1});
+	or_table.push_back(NORMALTUPLE {1,1,1});
+	
+	gt_table.push_back(NORMALTUPLE {0,0,0});
+	gt_table.push_back(NORMALTUPLE {0,1,0});
+	gt_table.push_back(NORMALTUPLE {1,0,1});
+	gt_table.push_back(NORMALTUPLE {1,1,0});
+
+	//first elem; MSB comp
+	NormalGate *prev_gate, *prev0, *prev1, *next;
+	gates.push_back( NormalGate(gt_table) );
+	prev_gate = &gates[gates.size()-1];
+	//from MSB to LSB
+	for (int i = n-1; i > 0; i--)
+	{
+		//bit i comp gate
+		prev0 = &gates.push_back( NormalGate(gt_table) );
+		prev0 = &gates[gates.size()-1];
+		//loop over 
+		for(int j = (n-1) - i; j > 0; j--)
+		{
+			gates.push_back( NormalGate(eqls_table) );
+			prev1 = &gates[gates.size()-1];
+			gates.push_back( NormalGate(and_table) );
+			next = &gates[gates.size()-1];
+			next.setparents(prev0, prev1);
+			prev0 = next;
+		}
+		gates.push_back(NormalGate(or_table));
+		next = &gates[gates.size()-1];
+		next.setparents(prev_gate, prev0);
+		prev_gate = next;
+	}
+
 }
 
 
