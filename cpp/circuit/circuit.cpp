@@ -5,12 +5,26 @@
 //prolly want to remove these eventually
 #include <assert.h>     /* assert */
 #include <utility>
-
 Gate::Gate(){
 	parent0=NULL;
 	parent1=NULL;
 	child=NULL;
 }
+
+Gate::Gate(NORMTABLE table){
+	n_table = table;
+	parent0=NULL;
+	parent1=NULL;
+	child=NULL;
+}
+
+Gate::Gate(std::string serial){
+	parent0=NULL;
+	parent1=NULL;
+	child=NULL;
+	unserialize(serial);
+}
+
 
 void Gate::setIn0(Gate *parent){
 	parent0 = parent;
@@ -114,6 +128,139 @@ void Gate::unserialize(std::string serial){
 	}
 }
 
+
+void MillionaireCircuit::generateCircuit(){
+	//Generating default gates needed
+	eqls_table.push_back(true);
+	eqls_table.push_back(false);
+	eqls_table.push_back(false);
+	eqls_table.push_back(true);
+
+	and_table.push_back(false);
+	and_table.push_back(false);
+	and_table.push_back(false);
+	and_table.push_back(true);
+
+
+	or_table.push_back(false);
+	or_table.push_back(true);
+	or_table.push_back(true);
+	or_table.push_back(true);
+
+
+	gt_table.push_back(false);
+	gt_table.push_back(false);
+	gt_table.push_back(true);
+	gt_table.push_back(false);
+
+	//first elem; LSB comp
+	Gate *gtg, *eqg, *andg, *out;
+	gates.clear();
+	gates.push_back( Gate(gt_table) );
+	out = &gates[0];
+	out->garble();
+	alice_wires.push_back(out->w_in0);
+	bob_wires.push_back(out->w_in1);
+	//from LSB to MSB
+	for (int i = 1; i < BITS; i++)
+	{
+		//equals
+		gates.push_back( Gate(eqls_table) );
+		eqg = &gates[gates.size()-1];
+		eqg->garble();
+		alice_wires.push_back(eqg->w_in0);
+		bob_wires.push_back(eqg->w_in1);
+
+		//greater than
+		gates.push_back( Gate(gt_table) );
+		gtg = &gates[gates.size()-1];
+		gtg->garble();
+		alice_wires.push_back(gtg->w_in0);
+		bob_wires.push_back(gtg->w_in1);
+
+		//and
+		gates.push_back( Gate(and_table) );
+		andg = &gates[gates.size()-1];
+		andg->setIn0(eqg);
+		andg->setIn1(out);
+		andg->garble();
+
+		//or
+		gates.push_back( Gate(or_table) );
+		out = &gates[gates.size()-1];
+		out->setIn0(gtg);
+		out->setIn1(andg);
+		andg->garble();
+	}
+}
+
+std::vector<std::string> MillionaireCircuit::serializeGates(){
+	std::vector<std::string> serial;
+	for (int i=0;i<gates.size(); i++){
+		serial.push_back(gates[i].serialize());
+	}
+	return serial;
+}
+
+std::string MillionaireCircuit::unserialize(std::vector<std::string> s_gates, std::vector<std::string> alice_inputs, std::vector<std::string> bob_inputs){
+
+	Gate *gtg, *eqg, *andg, *out;
+	int c = 0;
+	int i = 0;
+	gates.clear();
+
+	gates.push_back(Gate(s_gates[i]));
+	out = &gates[i];
+	out->setIn0(alice_inputs[c]);
+	out->setIn1(bob_inputs[c]);
+	out->eval();
+	c++;
+	i++;
+
+	//from LSB to MSB
+	while (c+1 < alice_inputs.size() && c+1<bob_inputs.size() && i+3<s_gates.size())
+	{
+		//equals
+		gates.push_back( Gate(s_gates[i]) );
+		eqg = &gates[i];
+		eqg->setIn0(alice_inputs[c]);
+		eqg->setIn1(bob_inputs[c]);
+		eqg->eval();
+		c++;
+		i++;
+
+		//greater than
+		gates.push_back( Gate(s_gates[i]) );
+		gtg = &gates[i];
+		eqg->setIn0(alice_inputs[c]);
+		eqg->setIn1(bob_inputs[c]);
+		eqg->eval();
+		c++;
+		i++;
+
+		//and
+		gates.push_back( Gate(s_gates[i]) );
+		andg = &gates[i];
+		andg->setIn0(eqg);
+		andg->setIn1(out);
+		andg->eval();
+		i++;
+
+		//or
+		gates.push_back( Gate(s_gates[i]) );
+		out = &gates[i];
+		out->setIn0(gtg);
+		out->setIn1(andg);
+		out->eval();
+		i++;
+	}
+	return out->g_out;
+}
+
+WIRE MillionaireCircuit::getOutputWire(){
+	return gates[gates.size()-1].w_out;
+}
+
 /*
 void Gate::setParents(Gate *prev0, Gate *prev1)
 {
@@ -127,7 +274,7 @@ void Gate::setParents(Gate *prev0, Gate *prev1)
 }
 
 // Not necessary; useful for testing
-TYPE NormalGate::computeGate(TYPE k0, TYPE k1)
+TYPE Gate::computeGate(TYPE k0, TYPE k1)
 {
 	for(NORMALTUPLE tup : table)
 	{
@@ -139,7 +286,7 @@ TYPE NormalGate::computeGate(TYPE k0, TYPE k1)
 }
 
 // Inputted wires are already garbled
-GarbledGate NormalGate::garble(WIRE k0, WIRE k1, WIRE out)
+GarbledGate Gate::garble(WIRE k0, WIRE k1, WIRE out)
 {
 	GARBLEDTABLE GARBTABLE;
 	TYPE key0, key1, key_out, X;
@@ -217,26 +364,26 @@ void MillionaireCircuit::generateCircuit()
 	gt_table.push_back(NORMALTUPLE {1,1,0});
 
 	//first elem; MSB comp
-	NormalGate *prev_gate, *prev0, *prev1, *next;
-	gates.push_back( NormalGate(gt_table) );
+	Gate *prev_gate, *prev0, *prev1, *next;
+	gates.push_back( Gate(gt_table) );
 	prev_gate = &gates[gates.size()-1];
 	//from MSB to LSB
 	for (int i = n-1; i > 0; i--)
 	{
 		//bit i comp gate
-		prev0 = &gates.push_back( NormalGate(gt_table) );
+		prev0 = &gates.push_back( Gate(gt_table) );
 		prev0 = &gates[gates.size()-1];
 		//loop over
 		for(int j = (n-1) - i; j > 0; j--)
 		{
-			gates.push_back( NormalGate(eqls_table) );
+			gates.push_back( Gate(eqls_table) );
 			prev1 = &gates[gates.size()-1];
-			gates.push_back( NormalGate(and_table) );
+			gates.push_back( Gate(and_table) );
 			next = &gates[gates.size()-1];
 			next.setparents(prev0, prev1);
 			prev0 = next;
 		}
-		gates.push_back(NormalGate(or_table));
+		gates.push_back(Gate(or_table));
 		next = &gates[gates.size()-1];
 		next.setparents(prev_gate, prev0);
 		prev_gate = next;

@@ -8,25 +8,23 @@ int main(int argc, char* argv[])
 
   std::cout << "Start basic test" << std::endl;
 
-  Gate test1;
-  NORMTABLE table;
-  table.push_back(false);
-  table.push_back(false);
-  table.push_back(false);
-  table.push_back(true);
-  test1.n_table = table;
-  test1.garble();
+  MillionaireCircuit alice, bob;
 
+  alice.generateCircuit();
 
-  Gate test2;
-  test2.unserialize(test1.serialize());
-  test2.setIn0(test1.w_in0.second);
-  test2.setIn1(test1.w_in1.second);
+  std::vector<std::string> gates = alice.serializeGates();
+  std::vector<std::string> alice_input, bob_input;
 
-  test2.eval();
-  if (test2.g_out==test1.w_out.first){
+  alice_input.push_back(alice.alice_wires[0].second);//first represents 0
+  bob_input.push_back(alice.bob_wires[0].second);   //second represents 1
+
+  std::string output = bob.unserialize(gates, alice_input, bob_input);
+
+  WIRE owire = alice.getOutputWire();
+
+  if (output==owire.first){
     std::cout<<"true"<<std::endl;
-  }else if (test2.g_out==test1.w_out.second){
+  }else if (output==owire.second){
     std::cout<<"false"<<std::endl;
   }else{
     std::cout<<"neither :("<<std::endl;

@@ -14,7 +14,7 @@
 
 //no idea what the datatypes are...
 //#define TYPE unsigned long long
-#define BITS 32
+#define BITS 1
 
 #define KSIZE 16
 
@@ -38,6 +38,8 @@ class Gate
 {
 public:
 	Gate();
+	Gate(NORMTABLE table);
+	Gate(std::string serial);
 	void setIn0(Gate *parent);
 	void setIn0(NORMTYPE in);
 	void setIn0(GARBTYPE in);
@@ -64,7 +66,12 @@ class MillionaireCircuit
 public:
 	MillionaireCircuit() = default;
 	void generateCircuit();
-	std::string serialize();
+	std::vector<std::string> serializeGates();
+	std::string unserialize(std::vector<std::string> s_gates, std::vector<std::string> alice_inputs, std::vector<std::string> bob_inputs);
+	WIRE getOutputWire();
+
+	std::vector<WIRE> alice_wires;
+	std::vector<WIRE> bob_wires;
 
 private:
 	std::vector<Gate> gates;
