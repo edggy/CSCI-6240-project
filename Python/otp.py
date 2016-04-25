@@ -557,33 +557,91 @@ class OTP:
 			
 		return (syncCount - syncSuccess, bytesUsed)
 	
-	def heartbeat(self, sendQueue, recvQueue, role, period = .25):
+	def beat(self, sendQueue, recvQueue, role, period = .25):
 		import time	
+		import socket
 		
 		if not self._socket:
-			import socket
-			raise socket.error	
+			raise socket.error
+		
+		self._socket.settimeout(period)
 		
 		start = time.time()
 		lastTime = 0
 		turnToSend = 0
 		
+		data = None
+		
+		
 		while True:
 			now = time.time()
+			# Check if at least one period transpired
 			if now - lastTime >= period:
+				# Check to see if it is our turn to send
 				if turnToSend == role:
-					if len(sendQueue) > 0:
-						data = sendQueue.pop()
-					else:
-						data = '\0'
-					self.send(data)
+					# Check to see if we need more data to send
+					if data is None:
+						try:
+							data = sendQueue.get_nowait()
+						except:
+						
+							try:
+								data = sendQueue.pop()
+							except:
+								try:
+									data = sendQueue.read(self._length)
+								except:
+									# No data, send null string
+									data = ''
+									
+						#print 'Sending: %r' % data
+						data = self.macEncrypt(data)[0]
+					try:
+						#print 'Sending: %r' % data
+						# Try to send the data
+						self._socket.send(data)
+						
+						lastTime = now
+						
+						# Set role to recieve
+						turnToSend = 1 - role
+					except socket.timeout:
+						# On error resend next beat
+						pass
+					
+				else:
+					# Our turn to recieve
+					try:
+						# Try to recieve the data
+						data = self.recv(self._length, flags=0)
+						lastTime = now
+						
+						if data != '\0'*self._length:
+							try:
+								# Put the data in the recived queue
+								recvQueue.put(data, True, period)
+							except:
+								try:
+									recvQueue.append(data)
+								except:
+									try:
+										recvQueue.write()
+									except:
+										pass
+						
+						# Set data to none since we don't need to resend
+						data = None
+					except (socket.timeout, VerifyException):
+						pass
+					# Set role to send
+					turnToSend = role
 					
 			
 		
-	def heartbeater(self, sendQueue, recvQueue, role, period = .25):
+	def heartbeat(self, sendQueue, recvQueue, role, period = .25):
 		import thread
 		
-		thread.start_new_thread(self.heartbeat, (sendQueue, recvQueue, role, period))
+		thread.start_new_thread(self.beat, (sendQueue, recvQueue, role, period))
 		
 		return recvQueue
 	        
