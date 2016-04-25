@@ -2,9 +2,10 @@
 
 #include <stdlib.h>
 #include <vector>
+#include <string>
 #include <utility> 		// for std::pair
-#include <tuple>		// for std::tuple; c++ 11 only
 #include <cstdlib>      // std::rand, std::srand
+#include "../lib/common.h"
 
 //Waiting until sure these work
 // #include "../crypto/otp.h"
@@ -12,48 +13,70 @@
 // #include "../crypto/secureChannel.h"
 
 //no idea what the datatypes are...
-//#define TYPE unsigned long long 
+//#define TYPE unsigned long long
+#define BITS 32
 
-#define TYPE unsigned char
-#define TYPE_KEY TYPE
-#define TYPE_MAC TYPE // do they need to be the same?
+#define KSIZE 16
 
-#define WIRE std::pair<TYPE, TYPE>
+#define GARBTYPE std::string
+#define MACTYPE std::string
+
+#define GARBPAIR std::pair<GARBTYPE, MACTYPE>
+#define WIRE std::pair<GARBTYPE, GARBTYPE>
+
+#define GARBTABLE std::vector<GARBPAIR>
 // k0, k1, out
-#define NORMALTUPLE std::tuple<TYPE, TYPE, TYPE>
-#define NORMALTABLE	std::vector<NORMALTUPLE>
+
+#define NORMTYPE bool
+
+#define NORMTABLE std::vector<NORMTYPE>
 // A normal gate's mapping
 
-
-#define GARBLEDPAIR std::pair<TYPE, TYPE_MAC>
-#define GARBLEDTABLE std::vector<GARBLEDPAIR>
-
-//Dummy functions that will be removed once everything else works
-namespace dummy
-{
-	// OTP
-	TYPE OTP(TYPE i, TYPE_KEY k);
-	// Random. Assume TYPE == TYPE_KEY
-	TYPE myrandom (TYPE_KEY field);
-
-	// Compute Mac
-	TYPE_MAC computeMac(TYPE i);
-}
 
 
 class Gate
 {
 public:
-	Gate() = default;
-	void setParents(Gate *prev0, Gate *prev1);
+	Gate();
+	void setIn0(Gate *parent);
+	void setIn0(NORMTYPE in);
+	void setIn0(GARBTYPE in);
+	void setIn1(Gate *parent);
+	void setIn1(NORMTYPE in);
+	void setIn1(GARBTYPE in);
+	void garble();
+	void eval();
+	std::string serialize();
+	void unserialize(std::string serial);
+
+	Gate *parent0, *parent1, *child;
+	NORMTYPE n_in0, n_in1, n_out;
+	WIRE w_in0, w_in1, w_out;
+	GARBTYPE g_in0, g_in1, g_out;
+	NORMTABLE n_table;
+
 private:
-	Gate *prev0, *prev1, *next;
-	WIRE *in0, *in1, *out;
+	GARBTABLE g_table;
 };
 
+class MillionaireCircuit
+{
+public:
+	MillionaireCircuit() = default;
+	void generateCircuit();
+	std::string serialize();
+
+private:
+	std::vector<Gate> gates;
+	NORMTABLE eqls_table, and_table, or_table, gt_table;
+};
+
+
+
+/*
 class GarbledGate : Gate
 {
-public:	
+public:
 	GarbledGate(GARBLEDTABLE g) :
 		table(g) {}
 	TYPE computeGate(TYPE k0, TYPE k1);
@@ -98,3 +121,5 @@ public:
 private:
 	NORMALTABLE eqls_table, and_table, or_table, gt_table;
 };
+
+*/
