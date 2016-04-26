@@ -23,7 +23,7 @@ compile:
 	# g++ users/bob.cpp lib/utils.cpp channel/channel.cpp channel/channel_wrapper.cpp -Wall -lcryptopp -o bin/bob.o
 
 circuit:
-	g++ circuit/test.cpp circuit/circuit.cpp lib/common.cpp -Wall -lcryptopp -o bin/circuit.o -pthread
+	g++ circuit/test.cpp circuit/circuit.cpp lib/common.cpp -lcryptopp -o bin/circuit.o -pthread
 
 keygen:
 	g++ lib/keygen.cpp -Wall -Wextra -lcryptopp -o bin/keygen.o -pthread

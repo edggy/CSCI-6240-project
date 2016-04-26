@@ -6,84 +6,86 @@
 #include <assert.h>     /* assert */
 #include <utility>
 Gate::Gate(){
-	parent0=NULL;
-	parent1=NULL;
-	child=NULL;
+	init();
 }
 
-Gate::Gate(NORMTABLE table){
+Gate::Gate(std::vector<bool> table){
+	init();
 	n_table = table;
-	parent0=NULL;
-	parent1=NULL;
-	child=NULL;
 }
 
 Gate::Gate(std::string serial){
-	parent0=NULL;
-	parent1=NULL;
-	child=NULL;
+	init();
 	unserialize(serial);
 }
 
+void Gate::init(){
+	parent0=NULL;
+	parent1=NULL;
+
+	w_in0 = NULL;
+	w_in1 = NULL;
+	w_out = NULL;
+	g_table = new GarbPair[4];
+}
 
 void Gate::setIn0(Gate *parent){
 	parent0 = parent;
-	parent0->child = this;
 }
 
-void Gate::setIn0(NORMTYPE in){
-	n_in0 = in;
-}
-
-void Gate::setIn0(GARBTYPE in){
+void Gate::setIn0(std::string in){
 	g_in0 = in;
 }
 
 void Gate::setIn1(Gate *parent){
 	parent1 = parent;
-	parent1->child = this;
 }
 
-void Gate::setIn1(NORMTYPE in){
-	n_in1 = in;
-}
-
-void Gate::setIn1(GARBTYPE in){
+void Gate::setIn1(std::string in){
 	g_in1 = in;
 }
 
 void Gate::garble(){
-	GARBTYPE x;
-	GARBTYPE key0;
-	GARBTYPE key1;
-	GARBTYPE key_out;
+	std::string x, key0, key1, key_out;
+
+
+	this->w_in0 = new Wire();
 	if(parent0!=NULL){
-		w_in0 = parent0->w_out;
+		this->w_in0->zero = parent0->w_out->zero;
+		this->w_in0->one = parent0->w_out->one;
 	}else{
-		w_in0 = WIRE(readRand(KSIZE),readRand(KSIZE));
+		this->w_in0->zero = readRand(KSIZE);
+		this->w_in0->one = readRand(KSIZE);
 	}
 
+	this->w_in1 = new Wire();
 	if(parent1!=NULL){
-		w_in1 = parent1->w_out;
+		this->w_in1->zero = parent1->w_out->zero;
+		this->w_in1->one = parent1->w_out->one;
 	}else{
-		w_in1 = WIRE(readRand(KSIZE),readRand(KSIZE));
+		this->w_in1->zero = readRand(KSIZE);
+		this->w_in1->one = readRand(KSIZE);
 	}
 
-	w_out = WIRE(readRand(KSIZE),readRand(KSIZE));
+	this->w_out = new Wire();
+	this->w_out->zero = readRand(KSIZE);
+	this->w_out->one = readRand(KSIZE);
+
 
 	for(int i=0;i<2;i++){
 		for(int j=0;j<2;j++){
-			GARBTYPE key0 = i==0 ? w_in0.first : w_in0.second;
-			GARBTYPE key1 = j==0 ? w_in1.first : w_in1.second;
-			GARBTYPE key_out = n_table[2*i+j] ? w_out.first : w_out.second;
+			key0 = i==0 ? w_in0->zero : w_in0->one;
+			key1 = j==0 ? w_in1->zero : w_in1->one;
+			key_out = n_table[2*i+j] ? w_out->one : w_out->zero;
 
 			x = xorby(key0, xorby(key1, key_out, KSIZE), KSIZE);
-			g_table.push_back( std::make_pair(x, hash(key_out)) );
+			g_table[2*i+j].ctext = x;
+			g_table[2*i+j].mac = hash(key_out);
 		}
 	}
 
 	// randomly shuffle the entries
-	std::random_shuffle (g_table.begin(), g_table.end());
+	//std::random_shuffle (&g_table[0], &g_table[3]);
 }
 
 void Gate::eval(){
@@ -95,11 +97,14 @@ void Gate::eval(){
 		g_in1 = parent1->g_out;
 	}
 
-	GARBTYPE key = xorby(g_in0, g_in1, KSIZE);
-	for(int i=0; i< g_table.size();i++){
+	std::string result;
+
+	std::string key = xorby(g_in0, g_in1, KSIZE);
+
+	for(int i=0; i< 4;i++){
 		//check if result = key_out and matches MACs
-		GARBTYPE result = xorby(key, g_table[i].first, KSIZE); //g_table[i].first = X;
-		if (hash(result) == g_table[i].second) //g_table[i].second = MAC
+		result = xorby(key, g_table[i].ctext, KSIZE); //g_table[i].first = X;
+		if (hash(result) == g_table[i].mac) //g_table[i].second = MAC
 		{
 			g_out = result;
 			return;
@@ -109,28 +114,37 @@ void Gate::eval(){
 
 std::string Gate::serialize(){
 	std::string result;
-	for(int i=0; i< g_table.size();i++){
-		result += g_table[i].first + g_table[i].second;
+	for(int i=0; i< 4;i++){
+		result += g_table[i].ctext + g_table[i].mac;
 	}
 	return result;
 }
 
 void Gate::unserialize(std::string serial){
-	int i = 0;
-	GARBTYPE x;
-	MACTYPE mac;
-	g_table.clear();
+	int i = 0, j=0;
+	std::string x, mac;
 	while(i<serial.length()){
 		x = serial.substr(i,KSIZE);
 		mac = serial.substr(i+KSIZE,64);
-		g_table.push_back(std::make_pair(x, mac));
+		g_table[j].ctext = x;
+		g_table[j].mac = mac;
 		i+=KSIZE+64;
+		j++;
 	}
 }
 
 
+void MillionaireCircuit::printGates(){
+	for (int i=0; i< gates.size();i++){
+		std::cout<<str2hexstr(gates[i]->w_out->zero)<<" "<<str2hexstr(gates[i]->w_out->one)<<" "<<str2hexstr(gates[i]->w_in0->zero)<<" "<<str2hexstr(gates[i]->w_in0->one)<<" "<<str2hexstr(gates[i]->w_in1->zero)<<" "<<str2hexstr(gates[i]->w_in1->one)<<" "<<std::endl;
+	}
+	std::cout<<std::endl;
+}
+
 void MillionaireCircuit::generateCircuit(){
 	//Generating default gates needed
+	std::vector<bool> eqls_table, and_table, or_table, gt_table;
+
 	eqls_table.push_back(true);
 	eqls_table.push_back(false);
 	eqls_table.push_back(false);
@@ -156,48 +170,48 @@ void MillionaireCircuit::generateCircuit(){
 	//first elem; LSB comp
 	Gate *gtg, *eqg, *andg, *out;
 	gates.clear();
-	gates.push_back( Gate(gt_table) );
-	out = &gates[0];
+	gates.push_back(new Gate(gt_table) );
+	out = gates[0];
 	out->garble();
 	alice_wires.push_back(out->w_in0);
 	bob_wires.push_back(out->w_in1);
 	//from LSB to MSB
-	for (int i = 1; i < BITS; i++)
+	for (int i = 1; i < bits; i++)
 	{
 		//equals
-		gates.push_back( Gate(eqls_table) );
-		eqg = &gates[gates.size()-1];
+		gates.push_back( new Gate(eqls_table) );
+		eqg = gates[gates.size()-1];
 		eqg->garble();
 		alice_wires.push_back(eqg->w_in0);
 		bob_wires.push_back(eqg->w_in1);
 
 		//greater than
-		gates.push_back( Gate(gt_table) );
-		gtg = &gates[gates.size()-1];
+		gates.push_back( new Gate(gt_table) );
+		gtg = gates[gates.size()-1];
 		gtg->garble();
 		alice_wires.push_back(gtg->w_in0);
 		bob_wires.push_back(gtg->w_in1);
 
 		//and
-		gates.push_back( Gate(and_table) );
-		andg = &gates[gates.size()-1];
+		gates.push_back( new Gate(and_table) );
+		andg = gates[gates.size()-1];
 		andg->setIn0(eqg);
 		andg->setIn1(out);
 		andg->garble();
 
 		//or
-		gates.push_back( Gate(or_table) );
-		out = &gates[gates.size()-1];
+		gates.push_back( new Gate(or_table) );
+		out = gates[gates.size()-1];
 		out->setIn0(gtg);
 		out->setIn1(andg);
-		andg->garble();
+		out->garble();
 	}
 }
 
 std::vector<std::string> MillionaireCircuit::serializeGates(){
 	std::vector<std::string> serial;
 	for (int i=0;i<gates.size(); i++){
-		serial.push_back(gates[i].serialize());
+		serial.push_back(gates[i]->serialize());
 	}
 	return serial;
 }
@@ -205,60 +219,49 @@ std::vector<std::string> MillionaireCircuit::serializeGates(){
 std::string MillionaireCircuit::unserialize(std::vector<std::string> s_gates, std::vector<std::string> alice_inputs, std::vector<std::string> bob_inputs){
 
 	Gate *gtg, *eqg, *andg, *out;
-	int c = 0;
-	int i = 0;
 	gates.clear();
 
-	gates.push_back(Gate(s_gates[i]));
-	out = &gates[i];
-	out->setIn0(alice_inputs[c]);
-	out->setIn1(bob_inputs[c]);
+	gates.push_back( new Gate(s_gates[0]));
+	out = gates[0];
+	out->setIn0(alice_inputs[0]);
+	out->setIn1(bob_inputs[0]);
 	out->eval();
-	c++;
-	i++;
 
 	//from LSB to MSB
-	while (c+1 < alice_inputs.size() && c+1<bob_inputs.size() && i+3<s_gates.size())
-	{
+	for (int i=1;i<bits;i++){
 		//equals
-		gates.push_back( Gate(s_gates[i]) );
-		eqg = &gates[i];
-		eqg->setIn0(alice_inputs[c]);
-		eqg->setIn1(bob_inputs[c]);
+		gates.push_back( new Gate(s_gates[4*i-3]) );
+		eqg = gates[4*i-3];
+		eqg->setIn0(alice_inputs[2*i-1]);
+		eqg->setIn1(bob_inputs[2*i-1]);
 		eqg->eval();
-		c++;
-		i++;
 
 		//greater than
-		gates.push_back( Gate(s_gates[i]) );
-		gtg = &gates[i];
-		eqg->setIn0(alice_inputs[c]);
-		eqg->setIn1(bob_inputs[c]);
-		eqg->eval();
-		c++;
-		i++;
+		gates.push_back( new Gate(s_gates[4*i-2]) );
+		gtg = gates[4*i-2];
+		gtg->setIn0(alice_inputs[2*i]);
+		gtg->setIn1(bob_inputs[2*i]);
+		gtg->eval();
 
 		//and
-		gates.push_back( Gate(s_gates[i]) );
-		andg = &gates[i];
+		gates.push_back( new Gate(s_gates[4*i-1]) );
+		andg = gates[4*i-1];
 		andg->setIn0(eqg);
 		andg->setIn1(out);
 		andg->eval();
-		i++;
 
 		//or
-		gates.push_back( Gate(s_gates[i]) );
-		out = &gates[i];
+		gates.push_back( new Gate(s_gates[4*i]) );
+		out = gates[4*i];
 		out->setIn0(gtg);
 		out->setIn1(andg);
 		out->eval();
-		i++;
 	}
 	return out->g_out;
 }
 
-WIRE MillionaireCircuit::getOutputWire(){
-	return gates[gates.size()-1].w_out;
+Wire * MillionaireCircuit::getOutputWire(){
+	return gates[gates.size()-1]->w_out;
 }
 
 /*
@@ -297,7 +300,7 @@ GarbledGate Gate::garble(WIRE k0, WIRE k1, WIRE out)
 		key1 = (int(std::get<1>(tup)) == 0) ? k1.first : k1.second;
 		key_out = (int(std::get<2>(tup)) == 0) ? out.first : out.second;
 		X = dummy::OTP(key0, dummy::OTP(key1, key_out));
-		GARBTABLE.push_back( std::make_pair(X, dummy::computeMac(key_out)) );
+		GARBTABLE.push_back( std::std::make_pair(X, dummy::computeMac(key_out)) );
 	}
 
 	// randomly shuffle the entries

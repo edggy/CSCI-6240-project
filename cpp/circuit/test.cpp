@@ -3,32 +3,57 @@
 #include <iostream>
 #include <assert.h>
 
+std::vector<std::string> input_chooser(std::vector<Wire *> wires, int bits, int input){
+  std::vector<std::string> result;
+  if (input%2==1){
+    result.push_back(wires[0]->one);
+  }else{
+    result.push_back(wires[0]->zero);
+  }
+  input /=2;
+  for(int i=1;i<bits;i++){
+    if (input%2==1){
+      result.push_back(wires[2*i-1]->one);
+      result.push_back(wires[2*i]->one);
+    }else{
+      result.push_back(wires[2*i-1]->zero);
+      result.push_back(wires[2*i]->zero);
+    }
+    input /= 2;
+  }
+  return result;
+}
+
 int main(int argc, char* argv[])
 {
+  if (argc<4){
+    std::cout<<"Usage: "<<argv[0]<<" <bits> <alice moneys> <bob cash420>"<<std::endl;
+    return 0;
+  }
 
-  std::cout << "Start basic test" << std::endl;
+  int bits = atoi(argv[1]);
 
-  MillionaireCircuit alice, bob;
+  MillionaireCircuit alice(atoi(argv[1])), bob(atoi(argv[1]));
 
   alice.generateCircuit();
 
   std::vector<std::string> gates = alice.serializeGates();
   std::vector<std::string> alice_input, bob_input;
 
-  alice_input.push_back(alice.alice_wires[0].second);//first represents 0
-  bob_input.push_back(alice.bob_wires[0].second);   //second represents 1
+  alice_input = input_chooser(alice.alice_wires, bits, atoi(argv[2]));
+  bob_input = input_chooser(alice.bob_wires, bits, atoi(argv[3]));
 
   std::string output = bob.unserialize(gates, alice_input, bob_input);
 
-  WIRE owire = alice.getOutputWire();
-
-  if (output==owire.first){
-    std::cout<<"true"<<std::endl;
-  }else if (output==owire.second){
+  Wire *owire = alice.getOutputWire();
+  if (output==owire->zero){
     std::cout<<"false"<<std::endl;
+  }else if (output==owire->one){
+    std::cout<<"true"<<std::endl;
   }else{
     std::cout<<"neither :("<<std::endl;
   }
 	// MillionaireCircuit m;
 	// m.generateCircuit();
+  return 1;
 }

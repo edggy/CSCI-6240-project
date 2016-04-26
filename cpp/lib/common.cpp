@@ -215,7 +215,7 @@ std::string aesDecrypt(std::string ciphertext, byte key[], byte iv[]){
 std::string xorby(std::string a, std::string b, int n){
   std::string result;
   for (int i=0;i<n;i++){
-    result+= a.at(i)^b.at(i);
+    result+= a[i]^b[i];
   }
   return result;
 }
