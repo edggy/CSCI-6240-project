@@ -25,7 +25,7 @@ std::vector<std::string> input_chooser_ot(OT ot, int bits, int input){
 
 int main(int argc, char ** argv){
   if (argc<2){
-    std::cout<<"Usage: "<<argv[0]<<" <alice port>"<<std::endl;
+    std::cout<<"Usage: "<<argv[0]<<" <alice port> <the size of your fat stack of cash>"<<std::endl;
     return 0;
   }
   int alice_port = atoi(argv[1]);
