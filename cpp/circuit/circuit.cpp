@@ -1,6 +1,7 @@
 #ifndef CIRCUIT_CPP
 #define CIRCUIT_CPP
 #include "circuit.h"
+#include "../lib/common.h"
 
 #include <algorithm>    // std::random_shuffle
 
@@ -82,17 +83,16 @@ void Gate::garble(){
 
 			x = xorby(key0, xorby(key1, key_out, KSIZE), KSIZE);
 			g_table[2*i+j].ctext = x;
-			g_table[2*i+j].mac = hash(key_out);
+			g_table[2*i+j].mac = hash_keys(key_out, key_out, key_out);
 		}
 	}
 
+	/*
 	for (int i=0; i < 4; i++) {
     int j = ((unsigned int)readRand(2)[0]) % 4;
     std::swap(g_table[i], g_table[j]);
 	}
-
-	// randomly shuffle the entries
-	//std::random_shuffle(&g_table[0], &g_table[3]);
+	*/
 }
 
 void Gate::eval(){
@@ -111,7 +111,7 @@ void Gate::eval(){
 	for(int i=0; i< 4;i++){
 		//check if result = key_out and matches MACs
 		result = xorby(key, g_table[i].ctext, KSIZE); //g_table[i].first = X;
-		if (hash(result) == g_table[i].mac) //g_table[i].second = MAC
+		if (hash_keys(result, result, result) == g_table[i].mac) //g_table[i].second = MAC
 		{
 			g_out = result;
 			return;

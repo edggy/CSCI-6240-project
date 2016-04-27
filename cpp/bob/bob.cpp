@@ -9,16 +9,33 @@
 #include <fstream>
 #include <unistd.h>
 
+
+std::vector<std::string> input_chooser_ot(OT ot, int bits, int input){
+  std::vector<std::string> result;
+  result.push_back(ot.recv(input%2==1).substr(0,16));
+
+  input /=2;
+  for(int i=1;i<bits;i++){
+    result.push_back(ot.recv(input%2==1).substr(0,16));
+    result.push_back(ot.recv(input%2==1).substr(0,16));
+    input /= 2;
+  }
+  return result;
+}
+
 int main(int argc, char ** argv){
   if (argc<2){
-    std::cout<<"Usage: "<<argv[0]<<" <proxy port>"<<std::endl;
+    std::cout<<"Usage: "<<argv[0]<<" <alice port>"<<std::endl;
     return 0;
   }
-  int proxy_port = atoi(argv[1]);
+  int alice_port = atoi(argv[1]);
+  int input = atoi(argv[2]);
+
+  MillionaireCircuit bob(BITS);
 
   TCP alice_conn;
 
-  alice_conn.connect_to_server(proxy_port);
+  alice_conn.connect_to_server(alice_port);
   if(!alice_conn.connected()){
     std::cout<<"unable to connect to alice_conn"<<std::endl;
   }else{
@@ -37,7 +54,34 @@ int main(int argc, char ** argv){
 
     alice_conn.set_keys(aes_key, aes_iv, hmac_password, init_nonce);
     OT ot(&alice_conn);
-    std::cout<<ot.recv(false)<<std::endl;
+
+    std::vector<std::string> serial_gates, alice_input, bob_input;
+
+    std::cout<<"Receiving gates..."<<std::endl;
+
+    for(int i=0;i<4*BITS-3;i++){
+      serial_gates.push_back( alice_conn.recv_encrypted().substr(0,320));
+      alice_conn.send_encrypted("ACK");
+    }
+
+    std::cout<<"Receiving inputs..."<<std::endl;
+
+    for(int i=0;i<2*BITS-1;i++){
+      alice_input.push_back( alice_conn.recv_encrypted().substr(0,16));
+      alice_conn.send_encrypted("ACK");
+    }
+
+    std::cout<<"Selecting inputs..."<<std::endl;
+
+    bob_input = input_chooser_ot(ot, BITS, input);
+
+    std::cout<<"Calculating answer..."<<std::endl;
+
+    std::string output = bob.unserialize(serial_gates, alice_input, bob_input);
+    alice_conn.send_encrypted(output);
+    std::cout<<"And the result is: "<<alice_conn.recv_encrypted()<<std::endl;
+
+
   }
 
   alice_conn.disconnect();

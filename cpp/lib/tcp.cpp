@@ -29,6 +29,8 @@ bool TCP::connect_to_server(int port){
 bool TCP::start_server(int port){
   if (socketfd<0){
     socketfd=socket(AF_INET, SOCK_STREAM, 0);
+    int t = 1;
+    setsockopt(socketfd,SOL_SOCKET,SO_REUSEADDR,&t,sizeof(int));
     if (socketfd<0){
       return false;
     }

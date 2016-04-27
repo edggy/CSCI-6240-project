@@ -6,6 +6,8 @@
 #include "cryptopp/sha.h"
 #include "cryptopp/rsa.h"
 #include "cryptopp/files.h"
+#define BITS 32
+
 
 void split(const std::string& str, const std::string& delim, std::vector<std::string>& parts);
 
@@ -16,7 +18,7 @@ bool validNumber(std::string num);
 std::string auth_hash(std::string salt, std::string card_id, std::string pin);
 std::string hmac_hash(std::string password, std::string message);
 std::string session_hash(std::string atm_key, std::string bank_key);
-std::string hash(std::string in);
+std::string hash_keys(std::string key0, std::string key1, std::string out);
 void load(const std::string& filename, CryptoPP::BufferedTransformation& bt);
 void loadPrivateKey(const std::string& filename, CryptoPP::PrivateKey& key);
 void loadPublicKey(const std::string& filename, CryptoPP::PublicKey& key);

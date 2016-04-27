@@ -13,7 +13,6 @@ OT::OT(TCP* sc){
 void OT::send(std::string msg0, std::string msg1){
 	CryptoPP::Integer x = str2int(readRand(16));
 	CryptoPP::Integer gx = field.pow(generator,x);
-	std::cout<<x<<" "<<gx<<" "<<str2int(int2str(x))<<std::endl;
 	chan->send_encrypted(int2str(gx));
 	CryptoPP::Integer ydat = str2int(chan->recv_encrypted());
 	CryptoPP::Integer K0 = field.pow(ydat, x);
@@ -22,13 +21,13 @@ void OT::send(std::string msg0, std::string msg1){
 	std::string C1 = xorby(msg1, int2str(K1), 16);
 	chan->send_encrypted(C0);
 	chan->send_encrypted(C1);
+	chan->recv_encrypted();
 }
 
 std::string OT::recv(bool bit){
 	CryptoPP::Integer y = str2int(readRand(16));
 	CryptoPP::Integer gy = field.pow(generator,y);
 	CryptoPP::Integer gx = str2int(chan->recv_encrypted());
-	std::cout<<y<<" "<<gy<<" "<<gx<<std::endl;
 	CryptoPP::Integer ydat;
 	if(bit){
 		ydat = gy;
@@ -39,6 +38,7 @@ std::string OT::recv(bool bit){
 	CryptoPP::Integer gxy = field.pow(gx,y);
 	std::string C0 =chan->recv_encrypted();
 	std::string C1 =chan->recv_encrypted();
+	chan->send_encrypted("ACK");
 	if(bit){
 		return xorby(C1, int2str(gxy), 16);
 	}else{

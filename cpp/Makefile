@@ -17,8 +17,8 @@ install:
 
 compile:
 	mkdir -p bin
-	g++ alice/alice.cpp lib/tcp.cpp lib/common.cpp circuit/circuit.h OT/OT.cpp OT/field.cpp -lcryptopp -o bin/alice.o -pthread
-	g++ bob/bob.cpp lib/tcp.cpp lib/common.cpp circuit/circuit.h OT/OT.cpp OT/field.cpp -lcryptopp -o bin/bob.o -pthread
+	g++ alice/alice.cpp lib/tcp.cpp lib/common.cpp circuit/circuit.cpp OT/OT.cpp OT/field.cpp -lcryptopp -o bin/alice.o -pthread
+	g++ bob/bob.cpp lib/tcp.cpp lib/common.cpp circuit/circuit.cpp OT/OT.cpp OT/field.cpp -lcryptopp -o bin/bob.o -pthread
 
 circuit:
 	g++ circuit/test.cpp circuit/circuit.cpp lib/common.cpp -lcryptopp -o bin/circuit.o -pthread
