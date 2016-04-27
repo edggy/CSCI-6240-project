@@ -1,19 +1,17 @@
-#pragma once
+#ifndef OT_H
+#define OT_H
 #include "field.h"
-#include "secureChannel.h"
+#include "../lib/tcp.h"
 
-class OneTwoOT {
+class OT {
 	private:
-		unsigned long long length;
-		const char* generator;
-		Field* field;
-		SecureChannel* chan;
-		
-	public:
-		OneTwoOT(unsigned long long len, const char* gen, Field* fld, SecureChannel* sc);
-		void otsend(const char* msg0, const char* msg1);
-		void otsend(const char* msg0, const char* msg1, unsigned long long length, const char* generator, Field* field);
-		char* otrecv(char* output, bool bit);
-		char* otrecv(char* output, bool bit, unsigned long long length, const char* generator, Field* field);
-};
+		Field field;
+		CryptoPP::Integer generator;
+		TCP* chan;
 
+	public:
+		OT(TCP* sc);
+		void send(std::string msg0, std::string msg1);
+		std::string recv(bool bit);
+};
+#endif

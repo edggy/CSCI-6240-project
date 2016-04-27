@@ -1,3 +1,5 @@
+#ifndef COMMON_CPP
+#define COMMON_CPP
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
@@ -82,9 +84,11 @@ std::string session_hash(std::string atm_key, std::string bank_key){
   return str2hexstr(std::string(hash_buff, 64));
 }
 
-std::string hash(std::string in){
+std::string hash_keys(std::string key0, std::string key1, std::string out){
   CryptoPP::SHA512 hash;
-  hash.Update((byte *) in.c_str(), in.length());
+  hash.Update((byte *) key0.c_str(), key0.length());
+  hash.Update((byte *) key1.c_str(), key1.length());
+  hash.Update((byte *) out.c_str(), out.length());
   char hash_buff[64];
   hash.Final((byte *)hash_buff);
   return std::string(hash_buff, 64);
@@ -214,31 +218,12 @@ std::string aesDecrypt(std::string ciphertext, byte key[], byte iv[]){
 
 std::string xorby(std::string a, std::string b, int n){
   std::string result;
+  a.resize(n, 0);
+  b.resize(n, 0);
   for (int i=0;i<n;i++){
     result+= a[i]^b[i];
   }
   return result;
 }
 
-
-/*
-int main(int argc, char* argv[]) {
-    //Key and IV setup
-    //AES encryption uses a secret key of a variable length (128-bit, 196-bit or 256-
-    //bit). This key is secretly exchanged between two parties before communication
-    //begins. DEFAULT_KEYLENGTH= 16 bytes
-    byte key[ CryptoPP::AES::DEFAULT_KEYLENGTH ], iv[ CryptoPP::AES::BLOCKSIZE ];
-    memset( key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH );
-    memset( iv, 0x00, CryptoPP::AES::BLOCKSIZE );
-
-    std::string plaintext = "Now is the time for all good men to come to the aide...";
-
-    std::string ciphertext = aesEncrypt(plaintext, key, iv);
-    std::string decrypted = aesDecrypt(ciphertext, key, iv);
-
-    std::cout << plaintext << std::endl;
-    std::cout << ciphertext << std::endl;
-    std::cout << decrypted << std::endl;
-    return 0;
-}
-*/
+#endif

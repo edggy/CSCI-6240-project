@@ -3,6 +3,8 @@
 #include "../lib/tcp.h"
 #include "../lib/common.h"
 #include "../circuit/circuit.h"
+#include "../OT/OT.h"
+
 #include <unistd.h>
 #include <map>
 #include <vector>
@@ -44,11 +46,13 @@ int main(int argc, char ** argv){
 
     bob_conn.set_keys(aes_key, aes_iv, hmac_password, init_nonce);
 
-    bob_conn.send_encrypted("This is only a test");
+    OT ot(&bob_conn);
 
-    std::cout<<"from bob: "<<bob_conn.recv_encrypted()<<std::endl;
+    ot.send("message 0", "message uno");
+
+    bob_conn.disconnect();
+    server.disconnect();
     std::cout<<"client disconnected"<<std::endl;
-
 
   }
 

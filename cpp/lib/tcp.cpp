@@ -1,3 +1,6 @@
+#ifndef TCP_CPP
+#define TCP_CPP
+
 #include "common.h"
 #include "tcp.h"
 #include <sys/socket.h>
@@ -168,3 +171,5 @@ std::string TCP::recv_nonce(int num_bytes){
 std::string TCP::recv_encrypted(int num_bytes){
   return hexstr2str(recv_nonce(num_bytes));
 }
+
+#endif
