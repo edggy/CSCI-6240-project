@@ -1,10 +1,17 @@
+#ifndef FIELD_CPP
+#define FIELD_CPP
+
 #include "field.h"
 #include "../lib/cryptopp/integer.h"
 #include "../lib/cryptopp/nbtheory.h"
 #include <sstream>
 
-Field::Field(CryptoPP::Integer modulus) {
-	this->modulus = modulus;
+Field::Field() {
+	this->modulus = CryptoPP::Integer("5570373270183181665098052481109678989411");
+}
+
+Field::Field(CryptoPP::Integer mod) {
+	this->modulus = mod;
 }
 
 CryptoPP::Integer Field::pow(const CryptoPP::Integer base, const CryptoPP::Integer exp) {
@@ -31,13 +38,15 @@ CryptoPP::Integer Field::mod(const CryptoPP::Integer num) {
 	return num%modulus;
 }
 
-const char* to_char_arr(const CryptoPP::Integer num){
-
-	std::stringstream ss;
-	ss << num;
-	return ss.str().c_str();
+std::string int2str(CryptoPP::Integer num){
+	byte result[40];
+	num.Encode(result,40);
+	return std::string((char *)result,64);
 }
 
-CryptoPP::Integer to_crytopp_int(const char* num){
-	return CryptoPP::Integer(num);
+CryptoPP::Integer str2int(std::string num){
+	CryptoPP::Integer result;
+	result.Decode((byte *)num.c_str(), 40);
+	return result;
 }
+#endif
