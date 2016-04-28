@@ -48,6 +48,7 @@ std::string OT::recv(bool bit){
 
 
 /*
+Implemented from:  https://www.youtube.com/watch?v=pIi-YTBBolU 
 
 Alice:
 chooses random x
